@@ -1,0 +1,89 @@
+*markdo.txt*                  Markdown runbooks for Neovim 0.11+
+
+Mark Do                                                        *markdo*
+
+Requires Neovim 0.11+ and the Tree-sitter Markdown block parser. Official
+Neovim releases include this parser; otherwise use :TSInstall markdown with
+nvim-treesitter or install parser/markdown.so on runtimepath. No setup needed.
+No keys are assigned by default. See README.md for a Lazy.nvim example.
+
+COMMANDS                                                       *markdo-commands*
+
+The following commands and normal-mode mappings are local to Markdown buffers,
+including buffers loaded before the plugin. All use unsaved buffer contents.
+
+:MarkDoDone                                                     *:MarkDoDone*
+    Check the innermost task containing the cursor. Already checked: no action.
+:MarkDoToggle                                                   *:MarkDoToggle*
+    Reverse the innermost task containing the cursor.
+:MarkDoCopy                                                     *:MarkDoCopy*
+    Copy the selected fence body as characterwise text to the + register.
+    Requires a clipboard provider; see :checkhealth vim.provider. No final
+    newline is added. Existing blank body lines are retained. Other registers
+    are untouched. Any language, including an unlabelled fence, can be copied.
+:MarkDoRun                                                      *:MarkDoRun*
+    Explicitly run the selected shell fence in a floating terminal.
+
+<Plug>(MarkDoDone)                                              *markdo-mappings*
+<Plug>(MarkDoToggle)
+<Plug>(MarkDoCopy)
+<Plug>(MarkDoRun)
+    Buffer-local normal-mode mappings for the corresponding commands.
+
+TASKS                                                          *markdo-tasks*
+
+Tasks include the bullet, continuation paragraphs, nested plain lists and code
+blocks. A nested checkbox owns its own scope. Ordered and unordered tasks accept
+[ ], [x] and [X]. Checking writes [x]. Checkbox-like code is not a task.
+Blank separators between siblings and positions outside tasks report a message.
+
+After an actual checkbox change, checkbox ancestors are recomputed bottom up.
+An ancestor checks when all descendant tasks are checked; any open descendant
+reopens it. Plain list items have no checkbox state. Direct parent commands
+leave descendants alone. The next descendant change recomputes its ancestors.
+Manual text edits never trigger roll-up. Changes affect only checkbox characters,
+preserve the cursor and form one undo step per command, including roll-up.
+
+FENCES                                                         *markdo-fences*
+
+Copy and Run share selection rules, in this order:
+1. On or inside a fence (including either delimiter), select that fence.
+2. In a task, select fences whose nearest checkbox ancestor is that task.
+   A sole match is used immediately; multiple matches open vim.ui.select with
+   language, opening line and first nonblank body line. Child task fences are
+   excluded. Zero matches reports a message.
+3. Outside tasks/fences, select the next fence outside tasks, before the next
+   heading of any level. Before the first heading, search only the preamble.
+
+Cancelling the picker does nothing. Source changes or deletion while it is open
+cancel the action and request a retry. Empty or incomplete selected fences report
+an error; no alternative fence is chosen. Both backtick and tilde fences work.
+Delimiters, info strings, container prefixes and Markdown fence indentation are
+removed. Relative indentation, comments, quotes and blank body lines remain.
+
+TERMINAL                                                       *markdo-terminal*
+
+On macOS and Linux, sh/bash/zsh/fish use the named executable with one -c script
+argument. The first word of the info string chooses the language. The label
+shell uses 'shell' and 'shellcmdflag'. Unsupported/unlabelled fences and missing
+executables report a short error. A run inherits the environment and originating
+window's effective cwd. All lines run together, preserving variables and cd.
+
+One asynchronous job runs at a time. A second Run focuses it. Terminal mode
+allows live input. Use CTRL-\ CTRL-N to enter terminal-buffer Normal mode:
+    x   Stop the active job, keeping output visible.
+    q   Close the float after exit.
+Closing the float another way stops an active job and cleans up the buffer.
+Output stays after exit, with status in the float title and b:markdo_exit_code.
+Exit status never changes task state. Runs occur only through explicit Run.
+Background job management is deferred.
+
+TESTING                                                        *markdo-testing*
+
+From the repository root: >
+    nvim --headless -u NONE -l tests/run.lua
+<
+Uses the real Markdown parser, a fake clipboard provider and harmless shell
+jobs. Verified with official Neovim 0.11.0 and its bundled Markdown parser.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
