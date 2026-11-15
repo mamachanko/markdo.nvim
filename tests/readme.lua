@@ -32,7 +32,7 @@ assert(vim.fn.maparg('<leader>xd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for key, action in pairs({ xx = 'Toggle', xd = 'Done', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress' }) do
+for key, action in pairs({ xx = 'Toggle', xd = 'Done', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
   local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
   assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
@@ -65,6 +65,13 @@ vim.notify = function(text) summary = text end
 vim.api.nvim_feedkeys('\\xs', 'xt', false)
 assert(summary == 'Mark Do: 1/2 tasks complete (50%)')
 vim.notify = notify
+vim.api.nvim_feedkeys('\\xv', 'xt', false)
+local inline_ns = assert(api.nvim_get_namespaces()['markdo.inline_progress'])
+local function inline_text()
+  local marks = api.nvim_buf_get_extmarks(0, inline_ns, 0, -1, { details = true })
+  return marks[1] and marks[1][4].virt_text[1][1]
+end
+assert(inline_text() == '  1/2 · 50%')
 vim.api.nvim_feedkeys('\\xn', 'xt', false)
 assert(api.nvim_win_get_cursor(0)[1] == 10)
 vim.api.nvim_feedkeys('\\xp', 'xt', false)
@@ -75,6 +82,7 @@ vim.cmd.MarkDoDone()
 assert(api.nvim_get_current_line() == '  - [x] Review the output')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [x] Ready for the day')
 assert(_G.markdo_progress() == '2/2 (100%)')
+assert(vim.wait(1000, function() return inline_text() == '  2/2 · 100%' end, 5))
 local completed = example('completed', 'markdown')
 for task in completed:gmatch('[^\n]+') do
   if task:find('%[x%]') then assert(vim.tbl_contains(api.nvim_buf_get_lines(0, 0, -1, false), task)) end
@@ -84,8 +92,11 @@ assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
 assert(_G.markdo_progress() == '1/2 (50%)')
 vim.cmd.undo()
 assert(_G.markdo_progress() == '2/2 (100%)')
+assert(vim.wait(1000, function() return inline_text() == '  2/2 · 100%' end, 5))
 assert(api.nvim_buf_get_lines(0, 9, 10, false)[1] == '  - [x] Review the output')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [x] Ready for the day')
+vim.api.nvim_feedkeys('\\xv', 'xt', false)
+assert(inline_text() == nil)
 vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
 assert(_G.markdo_progress() == '')
 vim.bo.filetype = 'text'

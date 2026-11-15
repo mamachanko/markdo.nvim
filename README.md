@@ -83,6 +83,7 @@ vim.api.nvim_create_autocmd('FileType', {
       ['<leader>xn'] = 'Next',
       ['<leader>xp'] = 'Prev',
       ['<leader>xs'] = 'Progress',
+      ['<leader>xv'] = 'ProgressToggle',
       -- ['<leader>x<Space>'] = 'Run', -- Alternative to <leader>xe.
     }) do
       vim.keymap.set('n', key, '<Plug>(MarkDo' .. action .. ')',
@@ -140,6 +141,7 @@ The fence belongs to **Run the greeting**, so put the cursor on that child to Co
 | `:MarkDoNext` | `<leader>xn` | Jump to the next unfinished task |
 | `:MarkDoPrev` | `<leader>xp` | Jump to the previous unfinished task |
 | `:MarkDoProgress` | `<leader>xs` | Show completion for the current buffer |
+| `:MarkDoProgressToggle` | `<leader>xv` | Toggle inline progress beside parent tasks |
 
 Example keys come from the [optional keymaps](#optional-keymaps) above. The plugin assigns none by default. Commands and mappings are buffer-local to Markdown, including buffers open before the plugin loads.
 
@@ -157,6 +159,7 @@ Use these normal-mode mappings in your own key configuration:
 | `<Plug>(MarkDoNext)` | `:MarkDoNext` |
 | `<Plug>(MarkDoPrev)` | `:MarkDoPrev` |
 | `<Plug>(MarkDoProgress)` | `:MarkDoProgress` |
+| `<Plug>(MarkDoProgressToggle)` | `:MarkDoProgressToggle` |
 
 </details>
 
@@ -177,6 +180,21 @@ Editing a parent with Done or Toggle leaves its descendants alone; the next chan
 Progress counts **checkbox tasks with no checkbox descendants**. A parent with two children contributes its two children to the total. A standalone task counts once; plain list items and checkbox text inside code do not count. A manually checked parent with an open child still has incomplete progress.
 
 The percentage rounds to the nearest whole number. An empty checklist reports **No tasks**. Progress reads unsaved edits and leaves the Markdown unchanged.
+
+#### Inline parent progress
+
+Use `:MarkDoProgressToggle` (optional `<leader>xv`) to show progress beside parent tasks in the current buffer:
+
+```text
+- [ ] Deploy                 1/3 · 33%
+  - [x] Run tests
+  - [ ] Build
+  - [ ] Publish
+```
+
+The suffix is subtle virtual text, highlighted like comments; it is never written into the Markdown. Each parent shows the completed leaf tasks in its own subtree. Standalone tasks, plain items, and checkbox text inside fences receive no annotation.
+
+Inline progress is **off by default** and toggles independently for each buffer. It refreshes after edits, completion commands, undo, and redo. Manual text edits update the numbers without changing checkbox states. Toggle again to hide it. Unloading the buffer or changing its filetype away from Markdown disables it.
 
 <details>
 <summary>Statusline integration and Lua API</summary>

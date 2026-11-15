@@ -29,6 +29,8 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
     Jump to the previous unchecked task before the cursor's line.
 :MarkDoProgress                                                 *:MarkDoProgress*
     Show completion for the current buffer, e.g. 6/8 tasks complete (75%).
+:MarkDoProgressToggle                                           *:MarkDoProgressToggle*
+    Toggle inline progress beside parent tasks in the current buffer.
 
 <Plug>(MarkDoDone)                                              *markdo-mappings*
 <Plug>(MarkDoToggle)
@@ -37,6 +39,7 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 <Plug>(MarkDoNext)
 <Plug>(MarkDoPrev)
 <Plug>(MarkDoProgress)
+<Plug>(MarkDoProgressToggle)
     Buffer-local normal-mode mappings for the corresponding commands.
 
 TASKS                                                          *markdo-tasks*
@@ -63,6 +66,26 @@ manually checked parent with an open child still has incomplete progress.
 MarkDoProgress reads the entire current buffer, including unsaved edits. The
 percentage rounds to the nearest whole number. A checklist with no tasks shows
 "No tasks". The command never changes the Markdown or checkbox states.
+
+INLINE PROGRESS                                                *markdo-inline-progress*
+
+MarkDoProgressToggle displays subtle virtual text at the end of each checkbox
+parent's line, e.g. "1/3 · 33%", using the Comment highlight. Each summary counts
+leaf checkbox tasks within that parent's subtree. Nested checkbox parents have
+their own summaries. Leaves, plain items and code receive no annotations.
+
+Off by default, independently enabled per buffer. Edits (including insert-mode
+and API edits), completion commands, undo and redo refresh the annotations on
+the next event-loop turn. Multiple edits are coalesced into a single refresh.
+Manual edits update numbers without changing checkbox state. Neither rendering
+nor toggling changes the text, cursor, modified flag, or undo history.
+
+Toggle again to hide. Changing filetype away from Markdown or unloading the
+buffer disables the display. Other plugins' decorations are left alone. An
+unavailable parser reports the dependency when enabling; background failures
+hide stale annotations and retry on the next edit without notifications.
+
+See README.md for the optional <leader>xv binding. No setup call is required.
 
 require('markdo').progress([bufnr])                              *markdo.progress()*
     Quiet query for statuslines and other Lua integrations. Omit bufnr or pass

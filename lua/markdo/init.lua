@@ -62,6 +62,11 @@ function M.show_progress()
   if progress.total == 0 then message('No tasks'); return end
   message(('%d/%d tasks complete (%d%%)'):format(progress.completed, progress.total, progress.percent))
 end
+function M.toggle_inline_progress()
+  local enabled, err = require('markdo.inline').toggle()
+  if enabled == nil then message(err); return end
+  message('Inline progress ' .. (enabled and 'enabled' or 'disabled'))
+end
 local function fence_action(action)
   local data = read(); if not data then return end
   local win = vim.api.nvim_get_current_win()
@@ -90,6 +95,7 @@ function M.attach(buf)
   for suffix, action in pairs({
     Done = 'done', Toggle = 'toggle', Copy = 'copy', Run = 'run',
     Next = 'next', Prev = 'prev', Progress = 'show_progress',
+    ProgressToggle = 'toggle_inline_progress',
   }) do
     vim.api.nvim_buf_create_user_command(buf, 'MarkDo' .. suffix, M[action], { desc = 'Mark Do: ' .. action, force = true })
     vim.keymap.set('n', '<Plug>(MarkDo' .. suffix .. ')', M[action], { buffer = buf, silent = true, desc = 'Mark Do: ' .. action })
