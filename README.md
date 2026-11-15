@@ -32,6 +32,8 @@ Official Neovim releases include the Markdown block parser. If your distribution
 
 For clipboard support, install a platform clipboard tool or configure `g:clipboard`; see `:help clipboard`.
 
+Check your installation with **`:checkhealth markdo`**. It verifies Neovim and Markdown parsing, then reports clipboard and shell availability with suggested fixes. Missing core dependencies are errors; unavailable optional capabilities are warnings. With Lazy.nvim, open a Markdown buffer first or use `:Lazy load markdo.nvim` before running the check.
+
 ## Installation
 
 ### Lazy.nvim
@@ -271,6 +273,7 @@ Closing the float another way stops an active job and cleans up its buffer. Back
 ## Help and development
 
 - **Reference:** `:help markdo`
+- **Diagnostics:** `:checkhealth markdo` (see `:help markdo-health`)
 - **Release notes:** [GitHub Releases](https://github.com/mamachanko/markdo.nvim/releases)
 - **Release process:** [Version rules and squash-merge guidance](docs/releases.md)
 - **Demo:** [Recording instructions](docs/demo.md) for the real Neovim UI capture above

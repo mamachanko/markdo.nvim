@@ -7,6 +7,25 @@ Neovim releases include this parser; otherwise use :TSInstall markdown with
 nvim-treesitter or install parser/markdown.so on runtimepath. No setup needed.
 No keys are assigned by default. See README.md for a Lazy.nvim example.
 
+HEALTHCHECK                                                    *markdo-health*
+
+:checkhealth markdo
+    Check Neovim 0.11+, the Markdown block parser, clipboard-provider
+    availability, and terminal-run support. No setup call is required.
+    With Lazy.nvim, open a Markdown buffer first or :Lazy load markdo.nvim
+    so the health module is on runtimepath.
+
+    Missing core dependencies report errors with upgrade/install advice.
+    Clipboard and Run capabilities are optional and report warnings when
+    unavailable. Shell diagnostics show 'shell', 'shellcmdflag', the configured
+    executable, platform support, and named interpreters available on PATH.
+    Only the shell named by a fence is required; installing every supported
+    interpreter is unnecessary.
+
+    The check parses a string fixture to verify task and fence node support.
+    It does not change a runbook, execute its fences, or read/write clipboard
+    contents. See :checkhealth vim.provider for provider-specific diagnostics.
+
 COMMANDS                                                       *markdo-commands*
 
 The following commands and normal-mode mappings are local to Markdown buffers,
