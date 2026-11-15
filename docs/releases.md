@@ -40,6 +40,16 @@ standard initial-release policy, not a claim that a v0 version already exists.
 Docs/maintenance-only history still skips release. From then on the table
 applies relative to the latest release tag. Do not create a placeholder v0 tag.
 
+## Initial implementation bootstrap
+
+The original implementation commit (`945e04b`) was merged before Conventional
+Commit subjects were used. The release configuration recognizes that exact
+commit hash as a feature and includes it under Features in the generated notes.
+This lets the existing history produce v1.0.0 without rewriting commits or
+adding a placeholder tag. Once v1.0.0 is tagged, that commit is outside the
+analyzed range and the exception has no further effect. Future nonconventional
+subjects still do not trigger releases.
+
 ## Squash merging without losing release intent
 
 semantic-release reads commits on `main`, so a PR's individual commit messages
@@ -67,8 +77,8 @@ BREAKING CHANGE: parent tasks no longer select their children's fences.
 The footer must be in the resulting Git commit, not just a PR discussion or
 review comment. A body-only `BREAKING CHANGE:` footer is sufficient even without
 `!`. Do not squash a feature as `docs:` or `chore:` unless no release is intended.
-The initial plugin PR should use `feat: ...` as its squash subject so it can
-produce v1.0.0 when merged.
+Check the resulting main-branch subject after merging, especially when using
+rebase or merge commits instead of squash.
 
 ## Local verification
 
@@ -85,3 +95,6 @@ the production analyzer and notes-generator configuration. Only the GitHub
 publisher is omitted; no GitHub token or live release is involved. It verifies
 patch, minor, major (`!` and footer), no-release, and initial v1.0.0 behavior,
 checks generated notes/tag names, and confirms dry runs neither tag nor commit.
+It also clones the real repository history to verify the legacy bootstrap and
+that subsequent docs-only history does not release again. CI fetches full
+history for this regression check.

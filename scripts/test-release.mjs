@@ -4,10 +4,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Writable } from 'node:stream';
 import semanticRelease from 'semantic-release';
 import config from '../release.config.mjs';
+
+const source = fileURLToPath(new URL('..', import.meta.url));
+// Pin the historical fixture so future feature commits cannot mask a broken rule.
+const bootstrapCommit = '945e04ba556427ae90b797d5443035718f21469d';
 
 const cases = [
   ['patch', 'fix: preserve blank lines', '1.2.4'],
@@ -21,6 +25,8 @@ const cases = [
   ['first feature', 'feat: add a shell picker', '1.0.0', false],
   ['first breaking', 'feat!: change task selection', '1.0.0', false],
   ['untagged docs', 'docs: clarify installation', null, false],
+  ['same subject, different commit', 'Implement Markdown task actions, fence copy, and terminal runner', null, false],
+  ['actual implementation bootstrap', null, '1.0.0', false],
 ];
 for (const [name, subject, expected, tagged = true] of cases) {
   const root = mkdtempSync(join(tmpdir(), 'markdo-release-'));
@@ -38,31 +44,49 @@ for (const [name, subject, expected, tagged = true] of cases) {
   const output = new Writable({ write(chunk, _, done) { log += chunk.toString(); done(); } });
   try {
     execFileSync('git', ['init', '--bare', '--initial-branch=main', remote], { stdio: 'ignore' });
-    execFileSync('git', ['init', '--initial-branch=main', cwd], { stdio: 'ignore' });
+    if (subject === null) {
+      execFileSync('git', ['clone', '--no-hardlinks', '--no-tags', source, cwd], { stdio: 'ignore' });
+      git('checkout', '-B', 'main', bootstrapCommit);
+      git('remote', 'remove', 'origin');
+    } else {
+      execFileSync('git', ['init', '--initial-branch=main', cwd], { stdio: 'ignore' });
+    }
     git('config', 'user.name', 'Mark Do test'); git('config', 'user.email', 'test@example.invalid');
     git('config', 'commit.gpgsign', 'false'); git('config', 'tag.gpgsign', 'false');
-    git('commit', '--allow-empty', '-m', 'chore: initial history');
+    if (subject !== null) git('commit', '--allow-empty', '-m', 'chore: initial history');
     if (tagged) git('tag', 'v1.2.3');
-    git('commit', '--allow-empty', '-m', subject);
+    if (subject !== null) git('commit', '--allow-empty', '-m', subject);
     git('remote', 'add', 'origin', remote);
     git('push', '--tags', 'origin', 'main');
     const before = git('rev-parse', 'HEAD');
-    const result = await semanticRelease({
+    const releaseOptions = {
       ...config,
       repositoryUrl: pathToFileURL(remote).href,
       dryRun: true,
       ci: false,
       // Exercise production analyzer/notes settings without GitHub credentials.
       plugins: config.plugins.filter(([plugin]) => plugin !== '@semantic-release/github'),
-    }, { cwd, env, stdout: output, stderr: output });
+    };
+    const context = { cwd, env, stdout: output, stderr: output };
+    const result = await semanticRelease(releaseOptions, context);
     assert.equal(result ? result.nextRelease.version : null, expected, log);
     if (result) {
       assert.equal(result.nextRelease.gitTag, `v${expected}`);
-      assert.match(result.nextRelease.notes, /preserve blank lines|shell picker|task selection/);
+      assert.match(result.nextRelease.notes, /preserve blank lines|shell picker|task selection|Markdown task actions/);
     }
     assert.equal(git('rev-parse', 'HEAD'), before, 'dry run must not commit');
     assert.equal(git('tag'), tagged ? 'v1.2.3' : '', 'dry run must not tag');
     console.log(`PASS ${name}: ${expected ?? 'no release'}`);
+    if (subject === null) {
+      assert.match(result.nextRelease.notes, /Features/);
+      assert.match(result.nextRelease.notes, /945e04b/);
+      git('tag', 'v1.0.0');
+      git('commit', '--allow-empty', '-m', 'docs: update the runbook');
+      git('push', '--tags', 'origin', 'main');
+      const afterBootstrap = await semanticRelease(releaseOptions, context);
+      assert.equal(afterBootstrap, false, 'legacy rule must not release again after v1.0.0');
+      console.log('PASS docs after bootstrap: no release');
+    }
   } catch (error) {
     console.error(log);
     throw error;
@@ -70,4 +94,4 @@ for (const [name, subject, expected, tagged = true] of cases) {
     rmSync(root, { recursive: true, force: true });
   }
 }
-console.log(`${cases.length} release-history cases passed`);
+console.log(`${cases.length} release-history cases plus post-bootstrap check passed`);
