@@ -36,6 +36,8 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 :MarkDoDoneNext                                                 *:MarkDoDoneNext*
     Check the current task, including ancestor roll-up, then move to the next
     unfinished task after the cursor's line. See |markdo-done-next|.
+:MarkDoReset [scope]                                            *:MarkDoReset*
+    Reopen tasks in task (default), section, or buffer scope. See |markdo-reset|.
 :MarkDoToggle                                                   *:MarkDoToggle*
     Reverse the innermost task containing the cursor.
 :MarkDoCopy                                                     *:MarkDoCopy*
@@ -56,6 +58,7 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 
 <Plug>(MarkDoDone)                                              *markdo-mappings*
 <Plug>(MarkDoDoneNext)
+<Plug>(MarkDoReset)
 <Plug>(MarkDoToggle)
 <Plug>(MarkDoCopy)
 <Plug>(MarkDoRun)
@@ -98,6 +101,33 @@ with a short message. Outside a task (including a sibling separator), report
 the normal dependency error. The ordinary Done command remains stationary.
 
 See README.md for optional <leader>xj. No default key is assigned.
+
+RESET                                                          *markdo-reset*
+
+:MarkDoReset [task]
+    Reopen the innermost checkbox task containing the cursor, including all
+    checkbox descendants through plain list items. Continuation text and
+    fenced code within a task select the same task as Done. Outside a task or
+    on a blank sibling separator, report "No task at cursor" and do nothing.
+:MarkDoReset section
+    Reopen tasks whose checkbox lines are in the current heading section.
+    Include subheadings; stop at the next heading of the same or higher level,
+    within the same Markdown container. Both ATX and setext headings work.
+    Before the first document heading, use the preamble. With no document
+    headings, that preamble is the whole buffer. Put the cursor on a parent
+    heading to reset its entire section, including subheadings.
+:MarkDoReset buffer
+    Reopen all checkbox tasks in the current buffer.
+
+All scopes use parsed structure and unsaved text. Reset [x]/[X] to [ ], leaving
+code, plain list items, and all other characters intact. Checked ancestors of
+changed tasks reopen too, even outside the scope. Preserve the cursor and make
+all checkbox changes one undo step. With no actual changes, leave ancestor
+states and undo history unchanged. Empty scopes report a short message.
+
+Completion offers task, section, and buffer. <Plug>(MarkDoReset) and the optional
+README <leader>xr binding use task scope. No setup or default key is required.
+Progress and inline annotations refresh after changes and undo.
 
 PROGRESS                                                       *markdo-progress*
 

@@ -32,7 +32,7 @@ assert(vim.fn.maparg('<leader>xd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'DoneNext', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
+for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'DoneNext', xr = 'Reset', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
   local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
   assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
@@ -110,6 +110,18 @@ assert(api.nvim_win_get_cursor(0)[1] == 10)
 assert(api.nvim_buf_get_lines(0, 3, 4, false)[1] == '  - [x] Run the greeting')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
 vim.cmd.undo()
+assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
+-- Reopen the completed sample using the documented subtree reset key.
+api.nvim_win_set_cursor(0, { 4, 0 }); vim.cmd.MarkDoDone()
+api.nvim_win_set_cursor(0, { 10, 0 }); vim.cmd.MarkDoDone()
+api.nvim_win_set_cursor(0, { 3, 2 })
+vim.api.nvim_feedkeys('\\xr', 'xt', false)
+assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
+assert(api.nvim_win_get_cursor(0)[1] == 3)
+vim.cmd.undo(); assert(require('markdo').progress().percent == 100)
+vim.cmd('MarkDoReset section')
+assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
+vim.cmd.undo(); vim.cmd('MarkDoReset buffer')
 assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
 vim.fn.delete(temp, 'rf')
 print('README install, keymap, Copy, Run, Done, and roll-up examples passed')

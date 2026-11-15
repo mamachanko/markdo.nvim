@@ -13,7 +13,10 @@ function M.read(buf)
   end
   local success, trees = pcall(parser.parse, parser)
   if not success or not trees[1] then return nil, 'Could not parse Markdown' end
-  local data = { buf = buf, lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false), tasks = {}, fences = {}, headings = {}, item_tails = {} }
+  local data = {
+    buf = buf, lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false),
+    tasks = {}, fences = {}, headings = {}, sections = {}, item_tails = {},
+  }
   local function visit(node, owner)
     local kind = node:type()
     if kind == 'list_item' then
@@ -45,11 +48,48 @@ function M.read(buf)
       data.fences[#data.fences + 1] = fence
       return
     elseif kind == 'atx_heading' or kind == 'setext_heading' then
-      data.headings[#data.headings + 1] = node:range()
+      local row = node:range()
+      data.headings[#data.headings + 1] = row
+      local level
+      for child in node:iter_children() do
+        level = level or tonumber(child:type():match('^atx_h([1-6])_marker$')
+          or child:type():match('^setext_h([12])_underline$'))
+      end
+      if level then
+        local container = node:parent()
+        while container:type() == 'section' do container = container:parent() end
+        local _, _, last, col = container:range()
+        data.sections[#data.sections + 1] = { first = row, last = last, last_col = col,
+          level = level, container = container:id(), document = container:type() == 'document' }
+      end
     end
     for c in node:iter_children() do visit(c, owner) end
   end
   visit(trees[1]:root())
+  -- Setext headings are flat in the 0.11 parser's section nodes. Build the
+  -- outline from parsed heading markers instead, bounded by their containers.
+  local preamble = { first = 0, last = #data.lines, last_col = 0 }
+  local stacks = {}
+  for _, section in ipairs(data.sections) do
+    if section.document then preamble.last = math.min(preamble.last, section.first) end
+    local stack = stacks[section.container] or {}
+    stacks[section.container] = stack
+    while #stack > 0 and stack[#stack].level >= section.level do
+      local previous = table.remove(stack)
+      previous.last, previous.last_col = section.first, 0
+    end
+    stack[#stack + 1] = section
+  end
+  table.insert(data.sections, 1, preamble)
+  function data:section_at(row)
+    local chosen
+    for _, section in ipairs(self.sections) do
+      if row >= section.first and (row < section.last or row == section.last and section.last_col > 0) then
+        chosen = section
+      end
+    end
+    return chosen
+  end
   function data:task_at(row)
     if not self.lines[row + 1] then return nil end
     for _, tail in ipairs(self.item_tails) do if row >= tail[1] and row <= tail[2] then return nil end end
