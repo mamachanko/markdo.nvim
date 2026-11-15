@@ -7,9 +7,11 @@ Work through Markdown runbooks in Neovim: check nested tasks, copy code, and run
 
 [Installation](#installation) · [Quick start](#quick-start) · [Commands](#commands) · [Behavior](#behavior) · [Help & development](#help-and-development)
 
-![Neovim demo: run a greeting in a floating terminal, then finish both children to check their parent](docs/demo.gif)
+![Neovim walkthrough: check health, navigate and complete tasks, inspect progress, reset, copy, then run an interactive shell fence](docs/demo.gif)
 
-*Run a step, review its output, and complete the checklist. Parent tasks update as you go.*
+*Check dependencies, work through tasks and progress, reset the checklist, then copy and run its shell fence.*
+
+[Demo chapters and recording instructions](docs/demo.md) · Uses the optional statusline example below.
 
 Keep your runbooks as ordinary Markdown, with the checklist and its commands together:
 
@@ -117,10 +119,8 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
   - [ ] Review the output
 ````
 
-1. **Run.** Place the cursor on **Run the greeting** (line 4), or inside its fence, and use `:MarkDoRun`. The float prints `Hello, Neovim!`, pauses one second, and shows `exit 0`. The task stays open.
-2. **Return.** Press **Ctrl-\**, then **Ctrl-N** to leave terminal mode. Press **q** to close the completed float.
-3. **Copy and complete.** Back on **Run the greeting**, use `:MarkDoCopy` to copy the three script lines. Use `:MarkDoDone` to check that child. The parent stays open.
-4. **Finish.** Use `:MarkDoNext` to move to **Review the output** (line 10), then `:MarkDoDone`. The last child and its parent check together:
+1. **Copy.** Place the cursor on **Run the greeting** (line 4), or inside its fence. Use `:MarkDoCopy` to copy the three script lines to the clipboard.
+2. **Complete and move.** Use `:MarkDoDoneNext` to check that child and move to **Review the output** (line 10). Use `:MarkDoDone` to finish the second child. The parent checks automatically:
 
 <!-- example:completed -->
 ```markdown
@@ -130,11 +130,9 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
   - [x] Review the output
 ```
 
-Toggle either child with `:MarkDoToggle` and the parent reopens. One undo reverses both changes.
-
-For repeated steps, `:MarkDoDoneNext` (optional `<leader>xj`) combines Done and Next: check the current task, then move to the next unfinished one.
-
-The fence belongs to **Run the greeting**, so put the cursor on that child to Copy or Run. Selecting the parent does not select its children's fences.
+3. **Inspect progress.** Use `:MarkDoProgress` for the summary and `:MarkDoProgressToggle` for inline parent counts. Toggle the child with `:MarkDoToggle` and the parent reopens; one undo restores both.
+4. **Reset.** Put the cursor on the parent (line 3) and use `:MarkDoReset` to reopen it and both children in one undo step. Section and whole-buffer scopes are also available below.
+5. **Execute.** Return to **Run the greeting** (line 4) and use `:MarkDoRun`. The float prints `Hello, Neovim!`, pauses one second, and shows `exit 0`. Press `Ctrl-\`, then `Ctrl-N` to leave terminal mode, then **q** to close the completed float. Running the script leaves the checklist open.
 
 ## Commands
 
@@ -294,7 +292,7 @@ The float opens in terminal mode for live input. One job may be active per Neovi
 
 | Terminal keys | Action |
 | --- | --- |
-| **Ctrl-\**, then **Ctrl-N** | Enter terminal-buffer Normal mode |
+| `Ctrl-\`, then `Ctrl-N` | Enter terminal-buffer Normal mode |
 | **x** in Normal mode | Stop the job and keep its output |
 | **q** in Normal mode | Close the float after exit |
 
@@ -306,7 +304,8 @@ Closing the float another way stops an active job and cleans up its buffer. Back
 - **Diagnostics:** `:checkhealth markdo` (see `:help markdo-health`)
 - **Release notes:** [GitHub Releases](https://github.com/mamachanko/markdo.nvim/releases)
 - **Release process:** [Version rules and squash-merge guidance](docs/releases.md)
-- **Demo:** [Recording instructions](docs/demo.md) for the real Neovim UI capture above
+- **Demo:** [Chapters and recording instructions](docs/demo.md) for the real Neovim UI capture above
+- **Contributing:** [Development and demo review](CONTRIBUTING.md)
 
 From the repository root, with Neovim and its Markdown parser:
 

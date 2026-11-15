@@ -13,6 +13,8 @@ from PIL import Image, ImageDraw, ImageFont
 args = argparse.ArgumentParser(description=__doc__)
 args.add_argument('--nvim', default='nvim')
 args.add_argument('--font', default='/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf')
+args.add_argument('--output', default='docs/demo.gif')
+args.add_argument('--stills', help='Optional directory for inspecting individual recorded frames')
 args = args.parse_args()
 root = Path(__file__).resolve().parent.parent
 os.chdir(root)
@@ -21,6 +23,7 @@ selector = selectors.DefaultSelector()
 selector.register(proc.stdout, selectors.EVENT_READ)
 unpacker = msgpack.Unpacker(raw=False)
 grid, attrs, replies, frames, durations = [], {}, {}, [], []
+completed = False
 foreground, background, cursor, serial = 0xD0D0D0, 0x1C1C1C, (0, 0), 0
 
 
@@ -112,48 +115,67 @@ def capture(milliseconds):
     draw.rectangle((x, y, x + cell_width - 1, y + cell_height - 1), outline='#ffcf66', width=2)
     frames.append(im)
     durations.append(milliseconds)
+    if args.stills:
+        target = Path(args.stills)
+        target.mkdir(parents=True, exist_ok=True)
+        im.save(target / f'{len(frames):02d}.png')
+
+
+def lua(code, *values):
+    return rpc('nvim_exec_lua', code, list(values))
 
 
 try:
     rpc('nvim_ui_attach', 40, 18, {'rgb': True, 'ext_linegrid': True})
-    rpc('nvim_exec_lua', """
-      vim.opt.rtp:prepend(vim.fn.getcwd())
-      vim.opt.termguicolors = true
-      vim.opt.swapfile = false
-      vim.opt.laststatus = 2
-      vim.opt.statusline = ' morning.md %= Mark Do '
-      vim.opt.shortmess:append('I')
-      vim.cmd.colorscheme('habamax')
-      vim.cmd('syntax on')
-      vim.cmd('edit examples/runbook.md')
-      vim.bo.filetype = 'markdown'
-      vim.cmd('runtime plugin/markdo.lua')
-      vim.api.nvim_win_set_cursor(0, {4, 2})
-    """, [])
-    capture(1600)
-    rpc('nvim_input', ':MarkDoRun')
-    capture(1400)
-    rpc('nvim_input', '\r')
-    pump(0.1)
-    capture(1000)
-    pump(1.1)
-    assert rpc('nvim_exec_lua', 'return vim.b.markdo_exit_code', []) == 0
-    capture(2600)
-    # The documented terminal normal-mode escape and q mapping.
+    lua("markdo_demo = dofile('scripts/demo.lua'); markdo_demo.setup()")
+    capture(1100)
+    for step in lua('return markdo_demo.steps'):
+        lua('markdo_demo.prepare(...)', step['id'])
+        rpc('nvim_input', ':' + step['command'])
+        capture(600)
+        rpc('nvim_input', '\r')
+        pump(0.15)
+        if step.get('message'):
+            capture(step['hold'])
+            if rpc('nvim_get_mode')['blocking']:
+                rpc('nvim_input', '\r')
+                pump()
+            lua('markdo_demo.check(...)', step['id'])
+        else:
+            # A health report or wrapped notification may request acknowledgement.
+            if rpc('nvim_get_mode')['blocking']:
+                rpc('nvim_input', '\r')
+                pump()
+            lua('markdo_demo.check(...)', step['id'])
+            capture(step['hold'])
+        if step['id'] == 'health':
+            lua('markdo_demo.health_details()')
+            capture(1900)
+    # Execution is last: real terminal input, live output, retained exit status.
+    rpc('nvim_input', 'Neovim\r')
+    lua('markdo_demo.check_running_output()')
+    capture(700)
+    lua('markdo_demo.check_exit()')
+    capture(2300)
     rpc('nvim_input', '\x1c\x0eq')
-    pump(0.3)
-    rpc('nvim_input', ':MarkDoDone')
+    pump()
+    lua('markdo_demo.check_closed()')
     capture(1200)
-    rpc('nvim_input', '\r')
-    capture(1700)
-    rpc('nvim_input', '6j:MarkDoDone')
-    capture(1200)
-    rpc('nvim_input', '\r')
-    capture(2600)
-    final = rpc('nvim_buf_get_lines', 0, 0, -1, False)
-    assert final[2].startswith('- [x]') and final[3].startswith('  - [x]') and final[9].startswith('  - [x]'), final
-    frames[0].save(root / 'docs/demo.gif', save_all=True, append_images=frames[1:], duration=durations, loop=0, optimize=True)
-    print(f'Recorded {len(frames)} actual Neovim UI frames ({sum(durations) / 1000:.1f}s) to docs/demo.gif')
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    frames[0].save(output, save_all=True, append_images=frames[1:], duration=durations, loop=0, optimize=True)
+    completed = True
+    print(f'Recorded {len(frames)} real Neovim frames ({sum(durations) / 1000:.1f}s) to {output}')
 finally:
-    proc.terminate()
-    proc.wait(timeout=5)
+    if proc.poll() is None:
+        try:
+            lua('if markdo_demo then markdo_demo.finish() end')
+            proc.stdin.write(msgpack.packb([2, 'nvim_command', ['qa!']]))
+            proc.stdin.flush()
+            proc.wait(timeout=5)
+        except Exception as error:
+            if proc.poll() is None:
+                proc.terminate()
+                proc.wait(timeout=5)
+            if completed:
+                raise RuntimeError('Neovim cleanup or clipboard restoration failed') from error
