@@ -23,11 +23,17 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
     are untouched. Any language, including an unlabelled fence, can be copied.
 :MarkDoRun                                                      *:MarkDoRun*
     Explicitly run the selected shell fence in a floating terminal.
+:MarkDoNext                                                     *:MarkDoNext*
+    Jump to the next unchecked task after the cursor's line.
+:MarkDoPrev                                                     *:MarkDoPrev*
+    Jump to the previous unchecked task before the cursor's line.
 
 <Plug>(MarkDoDone)                                              *markdo-mappings*
 <Plug>(MarkDoToggle)
 <Plug>(MarkDoCopy)
 <Plug>(MarkDoRun)
+<Plug>(MarkDoNext)
+<Plug>(MarkDoPrev)
     Buffer-local normal-mode mappings for the corresponding commands.
 
 TASKS                                                          *markdo-tasks*
@@ -43,6 +49,19 @@ reopens it. Plain list items have no checkbox state. Direct parent commands
 leave descendants alone. The next descendant change recomputes its ancestors.
 Manual text edits never trigger roll-up. Changes affect only checkbox characters,
 preserve the cursor and form one undo step per command, including roll-up.
+
+NAVIGATION                                                     *markdo-navigation*
+
+Next and Prev follow document order through the entire current buffer, across
+headings and including unfinished parent and child tasks. Checked tasks and
+checkbox text inside fences are skipped. The cursor lands on the opening [ of
+the destination checkbox; any closed fold at that location opens.
+
+Both commands search strictly after or before the cursor's line, skipping a
+task on that same line regardless of column. From continuation text or code,
+Prev can return to the containing task's checkbox. At a boundary or with no
+match, a short message appears and the cursor stays put. Navigation does not
+wrap, reads unsaved edits, and never changes buffer contents or checkbox state.
 
 FENCES                                                         *markdo-fences*
 

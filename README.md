@@ -13,7 +13,7 @@ Work through Markdown runbooks in Neovim: check nested tasks, copy code, and run
 
 Keep your runbooks as ordinary Markdown, with the checklist and its commands together:
 
-- **Nested tasks** — complete a task from its text or code; parent checkboxes reflect progress below them.
+- **Nested tasks** — move between unfinished tasks and complete them from text or code; parent checkboxes reflect progress below them.
 - **Code in context** — copy a fence body or run a shell script directly from the task it belongs to.
 - **Interactive execution** — inspect live output, enter terminal input, and keep the result visible after exit.
 
@@ -68,7 +68,7 @@ Use `:lua print(vim.fn.stdpath('data'))` to find your data directory. Install th
 
 ### Optional keymaps
 
-The following `init.lua` example keeps all four actions under `<leader>x`, only in Markdown buffers. It works with either installation above.
+The following `init.lua` example keeps the actions under `<leader>x`, only in Markdown buffers. It works with either installation above.
 
 <!-- example:keymaps -->
 ```lua
@@ -80,6 +80,8 @@ vim.api.nvim_create_autocmd('FileType', {
       ['<leader>xd'] = 'Done',
       ['<leader>xc'] = 'Copy',
       ['<leader>xe'] = 'Run',
+      ['<leader>xn'] = 'Next',
+      ['<leader>xp'] = 'Prev',
       -- ['<leader>x<Space>'] = 'Run', -- Alternative to <leader>xe.
     }) do
       vim.keymap.set('n', key, '<Plug>(MarkDo' .. action .. ')',
@@ -112,7 +114,7 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
 1. **Run.** Place the cursor on **Run the greeting** (line 4), or inside its fence, and use `:MarkDoRun`. The float prints `Hello, Neovim!`, pauses one second, and shows `exit 0`. The task stays open.
 2. **Return.** Press **Ctrl-\**, then **Ctrl-N** to leave terminal mode. Press **q** to close the completed float.
 3. **Copy and complete.** Back on **Run the greeting**, use `:MarkDoCopy` to copy the three script lines. Use `:MarkDoDone` to check that child. The parent stays open.
-4. **Finish.** Move to **Review the output** (line 10) and use `:MarkDoDone`. The last child and its parent check together:
+4. **Finish.** Use `:MarkDoNext` to move to **Review the output** (line 10), then `:MarkDoDone`. The last child and its parent check together:
 
 <!-- example:completed -->
 ```markdown
@@ -134,6 +136,8 @@ The fence belongs to **Run the greeting**, so put the cursor on that child to Co
 | `:MarkDoDone` | `<leader>xd` | Check the current task; checked tasks stay checked |
 | `:MarkDoCopy` | `<leader>xc` | Copy the selected fence body to the `+` register |
 | `:MarkDoRun` | `<leader>xe` | Run the selected shell fence in a float |
+| `:MarkDoNext` | `<leader>xn` | Jump to the next unfinished task |
+| `:MarkDoPrev` | `<leader>xp` | Jump to the previous unfinished task |
 
 Example keys come from the [optional keymaps](#optional-keymaps) above. The plugin assigns none by default. Commands and mappings are buffer-local to Markdown, including buffers open before the plugin loads.
 
@@ -148,6 +152,8 @@ Use these normal-mode mappings in your own key configuration:
 | `<Plug>(MarkDoDone)` | `:MarkDoDone` |
 | `<Plug>(MarkDoCopy)` | `:MarkDoCopy` |
 | `<Plug>(MarkDoRun)` | `:MarkDoRun` |
+| `<Plug>(MarkDoNext)` | `:MarkDoNext` |
+| `<Plug>(MarkDoPrev)` | `:MarkDoPrev` |
 
 </details>
 
@@ -160,6 +166,12 @@ The innermost checkbox item containing the cursor is the current task. Its scope
 After a checkbox changes, Mark Do recomputes its checkbox ancestors from the bottom up. A parent checks when **all descendant tasks are checked**, and reopens when any are open. Plain list items can contain tasks but have no checkbox state.
 
 Editing a parent with Done or Toggle leaves its descendants alone; the next changed descendant recomputes the parent. Manual text edits do not trigger updates. Each command changes only checkbox characters, preserves the cursor, and forms **one undo step**, including parent changes.
+
+### Navigating unfinished tasks
+
+`:MarkDoNext` and `:MarkDoPrev` move to the checkbox of the next or previous unchecked task in the current buffer. They follow document order across headings, include unfinished parent and child tasks, and skip checked tasks and checkbox text inside fences. Closed folds at the destination open automatically.
+
+Navigation searches strictly after or before the **cursor's line**, so repeating a command moves on from the task under the cursor. From continuation text or code, Prev can return to that task's checkbox. At either end, a short message appears and the cursor stays put; navigation does not wrap. Both commands read unsaved edits and leave the checklist unchanged.
 
 ### Fence selection
 
