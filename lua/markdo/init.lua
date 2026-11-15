@@ -10,7 +10,7 @@ local function change(toggle)
   local data = read(); if not data then return end
   local task = data:task_at(vim.api.nvim_win_get_cursor(0)[1] - 1)
   if not task then message('No task at cursor'); return end
-  if not toggle and task.checked then return end
+  if not toggle and task.checked then return true end
   task.checked = not task.checked
   local changes = { task }
   local parent = task.parent
@@ -34,6 +34,7 @@ local function change(toggle)
     vim.api.nvim_buf_set_text(data.buf, t.row, t.col + 1, t.row, t.col + 2, { t.checked and 'x' or ' ' })
   end
   vim.api.nvim_win_set_cursor(0, cursor)
+  return true
 end
 function M.done() change(false) end
 function M.toggle() change(true) end
@@ -52,6 +53,9 @@ local function navigate(direction)
     end
   end
   message(direction > 0 and 'No next unfinished task' or 'No previous unfinished task')
+end
+function M.done_next()
+  if change(false) then navigate(1) end
 end
 function M.next() navigate(1) end
 function M.prev() navigate(-1) end
@@ -93,7 +97,7 @@ end
 function M.attach(buf)
   if vim.bo[buf].filetype ~= 'markdown' then return end
   for suffix, action in pairs({
-    Done = 'done', Toggle = 'toggle', Copy = 'copy', Run = 'run',
+    Done = 'done', DoneNext = 'done_next', Toggle = 'toggle', Copy = 'copy', Run = 'run',
     Next = 'next', Prev = 'prev', Progress = 'show_progress',
     ProgressToggle = 'toggle_inline_progress',
   }) do
