@@ -3,11 +3,13 @@
 :MarkDoNext	markdo.txt	/*:MarkDoNext*
 :MarkDoPrev	markdo.txt	/*:MarkDoPrev*
 :MarkDoProgress	markdo.txt	/*:MarkDoProgress*
+:MarkDoProgressToggle	markdo.txt	/*:MarkDoProgressToggle*
 :MarkDoRun	markdo.txt	/*:MarkDoRun*
 :MarkDoToggle	markdo.txt	/*:MarkDoToggle*
 markdo	markdo.txt	/*markdo*
 markdo-commands	markdo.txt	/*markdo-commands*
 markdo-fences	markdo.txt	/*markdo-fences*
+markdo-inline-progress	markdo.txt	/*markdo-inline-progress*
 markdo-mappings	markdo.txt	/*markdo-mappings*
 markdo-navigation	markdo.txt	/*markdo-navigation*
 markdo-progress	markdo.txt	/*markdo-progress*
