@@ -27,6 +27,8 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
     Jump to the next unchecked task after the cursor's line.
 :MarkDoPrev                                                     *:MarkDoPrev*
     Jump to the previous unchecked task before the cursor's line.
+:MarkDoProgress                                                 *:MarkDoProgress*
+    Show completion for the current buffer, e.g. 6/8 tasks complete (75%).
 
 <Plug>(MarkDoDone)                                              *markdo-mappings*
 <Plug>(MarkDoToggle)
@@ -34,6 +36,7 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 <Plug>(MarkDoRun)
 <Plug>(MarkDoNext)
 <Plug>(MarkDoPrev)
+<Plug>(MarkDoProgress)
     Buffer-local normal-mode mappings for the corresponding commands.
 
 TASKS                                                          *markdo-tasks*
@@ -49,6 +52,29 @@ reopens it. Plain list items have no checkbox state. Direct parent commands
 leave descendants alone. The next descendant change recomputes its ancestors.
 Manual text edits never trigger roll-up. Changes affect only checkbox characters,
 preserve the cursor and form one undo step per command, including roll-up.
+
+PROGRESS                                                       *markdo-progress*
+
+Progress counts checkbox tasks with no checkbox descendants. Parent checkbox
+states summarize their children and do not add to the count. A task with only
+plain list children counts once. Checkbox text inside code is ignored. A
+manually checked parent with an open child still has incomplete progress.
+
+MarkDoProgress reads the entire current buffer, including unsaved edits. The
+percentage rounds to the nearest whole number. A checklist with no tasks shows
+"No tasks". The command never changes the Markdown or checkbox states.
+
+require('markdo').progress([bufnr])                              *markdo.progress()*
+    Quiet query for statuslines and other Lua integrations. Omit bufnr or pass
+    0 for the current buffer. Returns a table with these fields:
+        completed   Number of checked tasks with no checkbox descendants.
+        total       Number of tasks with no checkbox descendants.
+        percent     Rounded completion percentage, or nil if total is 0.
+    Invalid, unloaded, or non-Markdown buffers and missing parsers return
+    nil, error without a notification. Successful results are cached until
+    the buffer changes; callers receive an independent result table.
+    No setup or default statusline modification. See README.md for a native
+    Neovim statusline example and optional <leader>xs summary binding.
 
 NAVIGATION                                                     *markdo-navigation*
 

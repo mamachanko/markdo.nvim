@@ -32,7 +32,7 @@ assert(vim.fn.maparg('<leader>xd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for key, action in pairs({ xx = 'Toggle', xd = 'Done', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev' }) do
+for key, action in pairs({ xx = 'Toggle', xd = 'Done', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress' }) do
   local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
   assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
@@ -57,6 +57,14 @@ assert(vim.deep_equal(copied, { { 'name=Neovim', [[printf 'Hello, %s!\n' "$name"
 vim.api.nvim_feedkeys('\\xd', 'xt', false)
 assert(api.nvim_get_current_line() == '  - [x] Run the greeting')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
+assert(loadstring(example('statusline', 'lua')))()
+assert(_G.markdo_progress() == '1/2 (50%)')
+assert(api.nvim_eval_statusline('%{v:lua.markdo_progress()}', {}).str == '1/2 (50%)')
+local notify, summary = vim.notify
+vim.notify = function(text) summary = text end
+vim.api.nvim_feedkeys('\\xs', 'xt', false)
+assert(summary == 'Mark Do: 1/2 tasks complete (50%)')
+vim.notify = notify
 vim.api.nvim_feedkeys('\\xn', 'xt', false)
 assert(api.nvim_win_get_cursor(0)[1] == 10)
 vim.api.nvim_feedkeys('\\xp', 'xt', false)
@@ -66,15 +74,22 @@ assert(api.nvim_win_get_cursor(0)[1] == 10)
 vim.cmd.MarkDoDone()
 assert(api.nvim_get_current_line() == '  - [x] Review the output')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [x] Ready for the day')
+assert(_G.markdo_progress() == '2/2 (100%)')
 local completed = example('completed', 'markdown')
 for task in completed:gmatch('[^\n]+') do
   if task:find('%[x%]') then assert(vim.tbl_contains(api.nvim_buf_get_lines(0, 0, -1, false), task)) end
 end
 vim.api.nvim_feedkeys('\\xx', 'xt', false)
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
+assert(_G.markdo_progress() == '1/2 (50%)')
 vim.cmd.undo()
+assert(_G.markdo_progress() == '2/2 (100%)')
 assert(api.nvim_buf_get_lines(0, 9, 10, false)[1] == '  - [x] Review the output')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [x] Ready for the day')
+vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
+assert(_G.markdo_progress() == '')
+vim.bo.filetype = 'text'
+assert(_G.markdo_progress() == '')
 vim.fn.delete(temp, 'rf')
 print('README install, keymap, Copy, Run, Done, and roll-up examples passed')
 vim.cmd.qa({ bang = true })

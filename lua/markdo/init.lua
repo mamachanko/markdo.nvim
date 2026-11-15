@@ -55,6 +55,13 @@ local function navigate(direction)
 end
 function M.next() navigate(1) end
 function M.prev() navigate(-1) end
+function M.progress(buf) return require('markdo.progress').get(buf) end
+function M.show_progress()
+  local progress, err = M.progress()
+  if not progress then message(err); return end
+  if progress.total == 0 then message('No tasks'); return end
+  message(('%d/%d tasks complete (%d%%)'):format(progress.completed, progress.total, progress.percent))
+end
 local function fence_action(action)
   local data = read(); if not data then return end
   local win = vim.api.nvim_get_current_win()
@@ -80,7 +87,10 @@ function M.run()
 end
 function M.attach(buf)
   if vim.bo[buf].filetype ~= 'markdown' then return end
-  for suffix, action in pairs({ Done = 'done', Toggle = 'toggle', Copy = 'copy', Run = 'run', Next = 'next', Prev = 'prev' }) do
+  for suffix, action in pairs({
+    Done = 'done', Toggle = 'toggle', Copy = 'copy', Run = 'run',
+    Next = 'next', Prev = 'prev', Progress = 'show_progress',
+  }) do
     vim.api.nvim_buf_create_user_command(buf, 'MarkDo' .. suffix, M[action], { desc = 'Mark Do: ' .. action, force = true })
     vim.keymap.set('n', '<Plug>(MarkDo' .. suffix .. ')', M[action], { buffer = buf, silent = true, desc = 'Mark Do: ' .. action })
   end
