@@ -139,5 +139,7 @@ local isolated = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l
 assert(vim.v.shell_error == 0, isolated)
 local health_output = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l', 'tests/health_command.lua' })
 assert(vim.v.shell_error == 0, health_output)
+local demo_output = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l', 'tests/demo.lua' })
+assert(vim.v.shell_error == 0, demo_output)
 print(('Mark Do: %d checks passed on %s'):format(count, tostring(vim.version())))
 vim.cmd.qa({ bang = true })

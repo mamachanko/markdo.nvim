@@ -40,89 +40,67 @@ local copied
 vim.g.clipboard = { name = 'README test', cache_enabled = 0,
   copy = { ['+'] = function(ls, rt) copied = { ls, rt } end, ['*'] = function() end },
   paste = { ['+'] = function() return { { '' }, 'v' } end, ['*'] = function() return { { '' }, 'v' } end } }
-api.nvim_win_set_cursor(0, { 4, 0 })
-local source = api.nvim_get_current_buf()
-vim.api.nvim_feedkeys('\\xe', 'xt', false)
-local term, win = api.nvim_get_current_buf(), api.nvim_get_current_win()
-assert(vim.wait(5000, function() return vim.b[term].markdo_exit_code ~= nil end, 10))
-assert(vim.b[term].markdo_exit_code == 0)
-assert(table.concat(api.nvim_buf_get_lines(term, 0, -1, false), '\n'):find('Hello, Neovim!', 1, true))
-assert(api.nvim_buf_get_lines(source, 2, 3, false)[1] == '- [ ] Ready for the day')
-vim.cmd.stopinsert()
-for _, mapping in ipairs(api.nvim_buf_get_keymap(term, 'n')) do if mapping.lhs == 'q' then mapping.callback() end end
-assert(not api.nvim_win_is_valid(win))
-api.nvim_win_set_cursor(0, { 4, 0 })
-vim.api.nvim_feedkeys('\\xc', 'xt', false)
-assert(vim.deep_equal(copied, { { 'name=Neovim', [[printf 'Hello, %s!\n' "$name"]], 'sleep 1' }, 'v' }))
-vim.api.nvim_feedkeys('\\xd', 'xt', false)
-assert(api.nvim_get_current_line() == '  - [x] Run the greeting')
-assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
+local function at(row) api.nvim_win_set_cursor(0, { row, 2 }) end
+local function key(suffix) api.nvim_feedkeys('\\x' .. suffix, 'xt', false) end
+local function content() return table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') end
 assert(loadstring(example('statusline', 'lua')))()
+assert(_G.markdo_progress() == '0/2 (0%)')
+-- Copy first, then work through tasks with the documented optional keys.
+at(4); key('c')
+assert(vim.deep_equal(copied, { { 'name=Neovim', [[printf 'Hello, %s!\n' "$name"]], 'sleep 1' }, 'v' }))
+key('j')
+assert(api.nvim_win_get_cursor(0)[1] == 10)
+assert(api.nvim_buf_get_lines(0, 3, 4, false)[1] == '  - [x] Run the greeting')
+assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
 assert(_G.markdo_progress() == '1/2 (50%)')
-assert(api.nvim_eval_statusline('%{v:lua.markdo_progress()}', {}).str == '1/2 (50%)')
+key('p'); assert(api.nvim_win_get_cursor(0)[1] == 3)
+key('n'); assert(api.nvim_win_get_cursor(0)[1] == 10)
+key('d')
+assert(api.nvim_get_current_line() == '  - [x] Review the output')
+assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [x] Ready for the day')
+local completed = example('completed', 'markdown')
+for task in completed:gmatch('[^\n]+') do
+  if task:find('%[x%]') then assert(vim.tbl_contains(api.nvim_buf_get_lines(0, 0, -1, false), task)) end
+end
+-- Inspect buffer, statusline and inline progress, then reopen and undo.
+assert(_G.markdo_progress() == '2/2 (100%)')
+assert(api.nvim_eval_statusline('%{v:lua.markdo_progress()}', {}).str == '2/2 (100%)')
 local notify, summary = vim.notify
 vim.notify = function(text) summary = text end
-vim.api.nvim_feedkeys('\\xs', 'xt', false)
-assert(summary == 'Mark Do: 1/2 tasks complete (50%)')
+key('s'); assert(summary == 'Mark Do: 2/2 tasks complete (100%)')
 vim.notify = notify
-vim.api.nvim_feedkeys('\\xv', 'xt', false)
+key('v')
 local inline_ns = assert(api.nvim_get_namespaces()['markdo.inline_progress'])
 local function inline_text()
   local marks = api.nvim_buf_get_extmarks(0, inline_ns, 0, -1, { details = true })
   return marks[1] and marks[1][4].virt_text[1][1]
 end
-assert(inline_text() == '  1/2 · 50%')
-vim.api.nvim_feedkeys('\\xn', 'xt', false)
-assert(api.nvim_win_get_cursor(0)[1] == 10)
-vim.api.nvim_feedkeys('\\xp', 'xt', false)
-assert(api.nvim_win_get_cursor(0)[1] == 3)
-vim.api.nvim_feedkeys('\\xn', 'xt', false)
-assert(api.nvim_win_get_cursor(0)[1] == 10)
-vim.cmd.MarkDoDone()
-assert(api.nvim_get_current_line() == '  - [x] Review the output')
-assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [x] Ready for the day')
-assert(_G.markdo_progress() == '2/2 (100%)')
+assert(inline_text() == '  2/2 · 100%')
+key('x'); assert(_G.markdo_progress() == '1/2 (50%)')
+vim.cmd.undo(); assert(_G.markdo_progress() == '2/2 (100%)')
 assert(vim.wait(1000, function() return inline_text() == '  2/2 · 100%' end, 5))
-local completed = example('completed', 'markdown')
-for task in completed:gmatch('[^\n]+') do
-  if task:find('%[x%]') then assert(vim.tbl_contains(api.nvim_buf_get_lines(0, 0, -1, false), task)) end
-end
-vim.api.nvim_feedkeys('\\xx', 'xt', false)
-assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
-assert(_G.markdo_progress() == '1/2 (50%)')
-vim.cmd.undo()
-assert(_G.markdo_progress() == '2/2 (100%)')
-assert(vim.wait(1000, function() return inline_text() == '  2/2 · 100%' end, 5))
-assert(api.nvim_buf_get_lines(0, 9, 10, false)[1] == '  - [x] Review the output')
-assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [x] Ready for the day')
-vim.api.nvim_feedkeys('\\xv', 'xt', false)
-assert(inline_text() == nil)
-vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
-assert(_G.markdo_progress() == '')
-vim.bo.filetype = 'text'
-assert(_G.markdo_progress() == '')
--- Exercise the optional complete-and-continue binding on the sample runbook.
-vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
-api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
-api.nvim_win_set_cursor(0, { 4, 2 })
-vim.api.nvim_feedkeys('\\xj', 'xt', false)
-assert(api.nvim_win_get_cursor(0)[1] == 10)
-assert(api.nvim_buf_get_lines(0, 3, 4, false)[1] == '  - [x] Run the greeting')
-assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
-vim.cmd.undo()
-assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
--- Reopen the completed sample using the documented subtree reset key.
-api.nvim_win_set_cursor(0, { 4, 0 }); vim.cmd.MarkDoDone()
-api.nvim_win_set_cursor(0, { 10, 0 }); vim.cmd.MarkDoDone()
-api.nvim_win_set_cursor(0, { 3, 2 })
-vim.api.nvim_feedkeys('\\xr', 'xt', false)
-assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
-assert(api.nvim_win_get_cursor(0)[1] == 3)
+-- Reopen the sample with each reset scope; every reset is one undo step.
+at(3); key('r')
+assert(content() == runbook and api.nvim_win_get_cursor(0)[1] == 3)
 vim.cmd.undo(); assert(require('markdo').progress().percent == 100)
-vim.cmd('MarkDoReset section')
-assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
-vim.cmd.undo(); vim.cmd('MarkDoReset buffer')
-assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
+vim.cmd('MarkDoReset section'); assert(content() == runbook)
+vim.cmd.undo(); vim.cmd('MarkDoReset buffer'); assert(content() == runbook)
+key('v'); assert(inline_text() == nil)
+-- Execute last. Script exit never changes the reset checklist.
+at(4)
+local source = api.nvim_get_current_buf()
+key('e')
+local term, win = api.nvim_get_current_buf(), api.nvim_get_current_win()
+assert(vim.wait(5000, function() return vim.b[term].markdo_exit_code ~= nil end, 10))
+assert(vim.b[term].markdo_exit_code == 0)
+assert(table.concat(api.nvim_buf_get_lines(term, 0, -1, false), '\n'):find('Hello, Neovim!', 1, true))
+assert(table.concat(api.nvim_buf_get_lines(source, 0, -1, false), '\n') == runbook)
+vim.cmd.stopinsert()
+for _, mapping in ipairs(api.nvim_buf_get_keymap(term, 'n')) do if mapping.lhs == 'q' then mapping.callback() end end
+assert(not api.nvim_win_is_valid(win))
+vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
+assert(_G.markdo_progress() == '')
+vim.bo.filetype = 'text'; assert(_G.markdo_progress() == '')
 vim.fn.delete(temp, 'rf')
-print('README install, keymap, Copy, Run, Done, and roll-up examples passed')
+print('README install, keymaps, completion, progress, reset, Copy and final Run examples passed')
 vim.cmd.qa({ bang = true })
