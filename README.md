@@ -5,24 +5,38 @@ Work through Markdown runbooks in Neovim: check nested tasks, copy code, and run
 [![CI](https://github.com/mamachanko/markdo.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/mamachanko/markdo.nvim/actions/workflows/ci.yml)
 [![GitHub release](https://img.shields.io/github/v/release/mamachanko/markdo.nvim)](https://github.com/mamachanko/markdo.nvim/releases)
 
-![Real Neovim demo: run a greeting in a floating terminal, then finish both children to check their parent](docs/demo.gif)
+[Installation](#installation) · [Quick start](#quick-start) · [Commands](#commands) · [Behavior](#behavior) · [Help & development](#help-and-development)
 
-*Recorded from Neovim at 40 columns. Run → live output → finish children → parent checks.*
+![Neovim demo: run a greeting in a floating terminal, then finish both children to check their parent](docs/demo.gif)
+
+*Run a step, review its output, and complete the checklist. Parent tasks update as you go.*
+
+Keep your runbooks as ordinary Markdown, with the checklist and its commands together:
+
+- **Nested tasks** — complete a task from its text or code; parent checkboxes reflect progress below them.
+- **Code in context** — copy a fence body or run a shell script directly from the task it belongs to.
+- **Interactive execution** — inspect live output, enter terminal input, and keep the result visible after exit.
+
+Mark Do reads the current buffer, including unsaved edits. It works without a setup call and leaves your keys free.
 
 ## Requirements
 
-- **Neovim 0.11+** on Linux or macOS for running shell fences.
-- **Tree-sitter's Markdown block parser** (`markdown`). Official Neovim releases include it. If your distribution omits it, use `:TSInstall markdown` with nvim-treesitter or install a compatible `parser/markdown.so` on your runtimepath. Mark Do reports a missing parser; there is no regex fallback.
-- **Clipboard provider** for Copy: check `:checkhealth vim.provider`. Install a platform clipboard tool or configure `g:clipboard` (see `:help clipboard`). Checking tasks and running scripts do not need a clipboard.
-- **Shell executable** for Run: `sh`, `bash`, `zsh`, or `fish` on PATH. The label `shell` uses Neovim's `shell` and `shellcmdflag` options.
+| Dependency | Used for |
+| --- | --- |
+| **Neovim 0.11+** | All commands; shell execution supports Linux and macOS |
+| **Tree-sitter Markdown parser** (`markdown`) | Task scope, fence selection, and headings |
+| **Clipboard provider** | Copy only; check `:checkhealth vim.provider` |
+| **Shell executable** | Run only; `sh`, `bash`, `zsh`, `fish`, or Neovim's configured shell |
+
+Official Neovim releases include the Markdown block parser. If your distribution omits it, install it with `:TSInstall markdown` using nvim-treesitter, or add a compatible `parser/markdown.so` to your runtimepath. Mark Do reports a missing parser.
+
+For clipboard support, install a platform clipboard tool or configure `g:clipboard`; see `:help clipboard`.
 
 ## Installation
 
-Defaults work immediately: **no `setup()` call, no default keys**.
-
 ### Lazy.nvim
 
-Add this spec to your Lazy.nvim plugins:
+Add this spec to your plugins. **No `setup()` call is needed.**
 
 <!-- example:lazy -->
 ```lua
@@ -34,7 +48,7 @@ Add this spec to your Lazy.nvim plugins:
 
 ### Native Neovim packages
 
-With Neovim's default Linux/macOS data directory, run:
+With Neovim's default Linux/macOS data directory:
 
 <!-- example:native -->
 ```sh
@@ -43,11 +57,18 @@ mkdir -p "$pack_dir"
 git clone https://github.com/mamachanko/markdo.nvim.git "$pack_dir/markdo.nvim"
 ```
 
-Restart Neovim. If you use `NVIM_APPNAME` or a custom data directory, put the plugin in `site/pack/plugins/start/markdo.nvim` beneath `:lua print(vim.fn.stdpath('data'))` instead. Run `:helptags ALL` once to index help after a native installation.
+Restart Neovim, then run `:helptags ALL` to index the help file.
 
-### Optional Markdown keys
+<details>
+<summary>Custom data directory or NVIM_APPNAME</summary>
 
-Choose your own keys; this `init.lua` example applies only to Markdown. It works with either installation above. `<Plug>` mappings resolve when the plugin loads.
+Use `:lua print(vim.fn.stdpath('data'))` to find your data directory. Install the plugin beneath it at `site/pack/plugins/start/markdo.nvim`.
+
+</details>
+
+### Optional keymaps
+
+The following `init.lua` example keeps all four actions under `<leader>x`, only in Markdown buffers. It works with either installation above.
 
 <!-- example:keymaps -->
 ```lua
@@ -68,11 +89,11 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 ```
 
-These use lowercase `x`, `d`, `c`, and `e`. `<leader>x<Space>` is a comfortable alternative for Run: replace the `<leader>xe` entry with the commented entry above if you prefer it.
+All letters are lowercase. To use `<leader>x<Space>` for Run, replace the `<leader>xe` entry with the commented entry above. `<Plug>` mappings resolve when the plugin loads.
 
 ## Quick start
 
-Save this as `morning.md`, or open [examples/runbook.md](examples/runbook.md):
+Open [examples/runbook.md](examples/runbook.md), or save the following as `morning.md`:
 
 <!-- example:runbook -->
 ````markdown
@@ -88,10 +109,10 @@ Save this as `morning.md`, or open [examples/runbook.md](examples/runbook.md):
   - [ ] Review the output
 ````
 
-1. Put the cursor on **Run the greeting** (line 4), or anywhere in its fence. Run `:MarkDoRun`. The float prints `Hello, Neovim!`, pauses one second, and shows `exit 0`. The checklist stays open.
-2. Press **Ctrl-\**, then **Ctrl-N** to leave terminal mode; press **q** to close the completed float.
-3. Back on **Run the greeting**, run `:MarkDoCopy` to copy just the three script lines to the system clipboard. Run `:MarkDoDone` to check that child. Its parent stays open.
-4. Move to **Review the output** (line 10) and run `:MarkDoDone`. The last child and the parent now check together:
+1. **Run.** Place the cursor on **Run the greeting** (line 4), or inside its fence, and use `:MarkDoRun`. The float prints `Hello, Neovim!`, pauses one second, and shows `exit 0`. The task stays open.
+2. **Return.** Press **Ctrl-\**, then **Ctrl-N** to leave terminal mode. Press **q** to close the completed float.
+3. **Copy and complete.** Back on **Run the greeting**, use `:MarkDoCopy` to copy the three script lines. Use `:MarkDoDone` to check that child. The parent stays open.
+4. **Finish.** Move to **Review the output** (line 10) and use `:MarkDoDone`. The last child and its parent check together:
 
 <!-- example:completed -->
 ```markdown
@@ -101,58 +122,94 @@ Save this as `morning.md`, or open [examples/runbook.md](examples/runbook.md):
   - [x] Review the output
 ```
 
-The parent owns no fences here: put the cursor on the greeting child to Copy or Run. Toggle either child with `:MarkDoToggle` and the parent reopens. One undo reverses the child change and its parent roll-up.
+Toggle either child with `:MarkDoToggle` and the parent reopens. One undo reverses both changes.
+
+The fence belongs to **Run the greeting**, so put the cursor on that child to Copy or Run. Selecting the parent does not select its children's fences.
 
 ## Commands
 
-All commands and normal-mode `<Plug>` mappings are buffer-local to Markdown, including buffers already open when the plugin loads.
-
-| Command | `<Plug>` mapping | Action |
+| Command | Example key | Action |
 | --- | --- | --- |
-| `:MarkDoDone` | `<Plug>(MarkDoDone)` | Check the current task; checked tasks stay checked |
-| `:MarkDoToggle` | `<Plug>(MarkDoToggle)` | Reverse the current task |
-| `:MarkDoCopy` | `<Plug>(MarkDoCopy)` | Copy the selected fence body to `+` |
-| `:MarkDoRun` | `<Plug>(MarkDoRun)` | Run the selected shell fence in a float |
+| `:MarkDoToggle` | `<leader>xx` | Reverse the current task |
+| `:MarkDoDone` | `<leader>xd` | Check the current task; checked tasks stay checked |
+| `:MarkDoCopy` | `<leader>xc` | Copy the selected fence body to the `+` register |
+| `:MarkDoRun` | `<leader>xe` | Run the selected shell fence in a float |
+
+Example keys come from the [optional keymaps](#optional-keymaps) above. The plugin assigns none by default. Commands and mappings are buffer-local to Markdown, including buffers open before the plugin loads.
+
+<details>
+<summary>&lt;Plug&gt; mapping reference</summary>
+
+Use these normal-mode mappings in your own key configuration:
+
+| Mapping | Command |
+| --- | --- |
+| `<Plug>(MarkDoToggle)` | `:MarkDoToggle` |
+| `<Plug>(MarkDoDone)` | `:MarkDoDone` |
+| `<Plug>(MarkDoCopy)` | `:MarkDoCopy` |
+| `<Plug>(MarkDoRun)` | `:MarkDoRun` |
+
+</details>
 
 ## Behavior
 
-### Tasks and roll-up
+### Tasks and parent completion
 
-The innermost checkbox item containing the cursor wins, including continuation paragraphs, nested plain lists, and fenced code. Ordered and unordered lists support `[ ]`, `[x]`, and `[X]`; checking writes `[x]`. Checkbox text inside code is never a task. Blank separators between sibling items and positions outside tasks report a short message and leave the buffer alone.
+The innermost checkbox item containing the cursor is the current task. Its scope includes continuation paragraphs, nested plain lists, and fenced code. Ordered and unordered lists support `[ ]`, `[x]`, and `[X]`; checking writes `[x]`. Checkbox text inside code is treated as code. Blank separators between sibling items and positions outside tasks leave the buffer unchanged and report a short message.
 
-After a checkbox changes, Mark Do recomputes its checkbox ancestors from the bottom up. An ancestor checks only when all descendant tasks are checked, and reopens when any are open. Plain items can contain tasks but have no checkbox state. Directly editing a parent with Done or Toggle leaves its descendants alone; the next changed descendant recomputes that parent. Manual text edits never trigger roll-up. Each command changes only checkbox characters, preserves the cursor, and forms one undo step.
+After a checkbox changes, Mark Do recomputes its checkbox ancestors from the bottom up. A parent checks when **all descendant tasks are checked**, and reopens when any are open. Plain list items can contain tasks but have no checkbox state.
 
-### Fence selection and Copy
+Editing a parent with Done or Toggle leaves its descendants alone; the next changed descendant recomputes the parent. Manual text edits do not trigger updates. Each command changes only checkbox characters, preserves the cursor, and forms **one undo step**, including parent changes.
 
-Copy and Run use the current buffer, including unsaved edits, in this order:
+### Fence selection
 
-1. **On or inside a fence**, including its opening or closing delimiter: select that fence.
-2. **In a task**: consider only fences whose nearest checkbox ancestor is that task. Select a sole match; with several, `vim.ui.select` shows language, line number, and first nonblank body line. Child-task fences belong to the child.
-3. **Elsewhere**: select the next fence outside any task, stopping at the next heading of any level. Before the first heading, search only the preamble.
+Copy and Run share the same selection rules:
 
-Cancelling the picker does nothing. Changing or deleting the source while it is open cancels the action and asks you to retry. Zero matches, an incomplete fence, or an empty body produces a message. An unusable selected fence never causes a different fence to be selected.
+| Cursor location | Selected fence |
+| --- | --- |
+| On or inside a fence, including either delimiter | That fence |
+| In a task | A fence whose nearest checkbox ancestor is that task |
+| Outside tasks and fences | The next fence outside any task, before the next heading |
 
-Backticks and tildes work. Mark Do removes delimiters, the language label, Markdown container prefixes, and fence indentation. Script-relative indentation, blank lines, quotes, and comments remain. Copy accepts any language or no language, writes characterwise text to `+`, and adds no final newline. Existing blank final body lines are preserved. A missing clipboard provider reports a message and leaves other registers alone.
+If a task owns several fences, `vim.ui.select` shows each fence's language, opening line number, and first nonblank body line. Child-task fences belong to the child. Outside tasks, a heading of any level ends the search; before the first heading, only the preamble is searched.
 
-### Shell execution
+Cancelling the picker does nothing. Editing or deleting the source while it is open cancels the action and asks you to retry. No match, an incomplete fence, or an empty body produces a short message. An unusable selection never falls through to another fence.
 
-The first word of the fence's info string chooses the interpreter: `sh`, `bash`, `zsh`, and `fish` use their named executable with the whole body as one `-c` argument. `shell` uses Neovim's `shell` and `shellcmdflag`. An unlabelled or unsupported fence, or a missing executable, reports an error.
+### Copying code
 
-Every Run starts a fresh asynchronous terminal job, inherits Neovim's environment, and uses the **originating window's effective working directory**, including `:lcd`/`:tcd`. Variables and `cd` persist across lines within that run. Review scripts before running them: only an explicit Run executes code. Exit status never edits a checkbox.
+Backtick and tilde fences are supported, with any language label or none. Mark Do removes delimiters, the label, Markdown container prefixes, and fence indentation. **Script-relative indentation, blank lines, quotes, and comments are preserved.**
 
-Output stays visible after exit; the float title shows the code, also available as `b:markdo_exit_code`. One job may be active per Neovim instance. A second Run focuses it. The float opens in terminal mode for live input.
+Copy writes characterwise text to `+` without adding a final newline; existing blank final body lines remain. A missing clipboard provider reports a message and leaves other registers alone.
+
+### Running shell fences
+
+The first word of the fence's info string selects the interpreter:
+
+| Label | Invocation |
+| --- | --- |
+| `sh`, `bash`, `zsh`, `fish` | Named executable with the entire body as one `-c` argument |
+| `shell` | Neovim's `shell` and `shellcmdflag` options |
+
+Each Run starts a fresh asynchronous terminal job, inherits Neovim's environment, and uses the **originating window's effective working directory**, including `:lcd` and `:tcd`. Variables and `cd` persist across lines within that run. An unlabelled or unsupported fence, or a missing executable, reports an error.
+
+Scripts run only when you explicitly invoke Run. Exit status never changes the checklist. Output stays visible after exit, with the code in the float title and `b:markdo_exit_code`.
+
+The float opens in terminal mode for live input. One job may be active per Neovim instance; a second Run focuses it.
 
 | Terminal keys | Action |
 | --- | --- |
 | **Ctrl-\**, then **Ctrl-N** | Enter terminal-buffer Normal mode |
 | **x** in Normal mode | Stop the job and keep its output |
-| **q** in Normal mode | Close the float after the job exits |
+| **q** in Normal mode | Close the float after exit |
 
 Closing the float another way stops an active job and cleans up its buffer. Background job management is deferred.
 
-## Help, tests, and releases
+## Help and development
 
-Read `:help markdo` for the reference and [GitHub Releases](https://github.com/mamachanko/markdo.nvim/releases) for generated release notes. See [release maintenance](docs/releases.md) for Conventional Commits, squash merges, and the first version policy.
+- **Reference:** `:help markdo`
+- **Release notes:** [GitHub Releases](https://github.com/mamachanko/markdo.nvim/releases)
+- **Release process:** [Version rules and squash-merge guidance](docs/releases.md)
+- **Demo:** [Recording instructions](docs/demo.md) for the real Neovim UI capture above
 
 From the repository root, with Neovim and its Markdown parser:
 
@@ -161,11 +218,22 @@ nvim --headless -u NONE -l tests/run.lua
 nvim --headless -u NONE -l tests/readme.lua
 ```
 
-CI runs these on Linux and macOS with **0.11.0** and **current stable**, including fork pull requests. Tests use a fake clipboard provider, real parsing, and harmless terminal jobs. To check release rules locally with Node.js 24.10+:
+CI tests Neovim **0.11.0** and **current stable** on Linux and macOS, including fork pull requests. Tests use real parsing, a fake clipboard provider, and harmless terminal jobs.
+
+<details>
+<summary>Check release tooling locally</summary>
+
+With Node.js 24.10+:
 
 ```sh
 npm ci
 npm run test:release
 ```
 
-The short demo is captured from a real Neovim UI; [recording instructions](docs/demo.md) describe how to reproduce it.
+These checks use throwaway Git histories. See [release maintenance](docs/releases.md) for the version policy and test cases.
+
+</details>
+
+## License
+
+[MIT](LICENSE) © Max Brauer
