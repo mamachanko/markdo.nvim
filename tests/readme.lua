@@ -28,13 +28,13 @@ local runbook = example('runbook', 'markdown', '````')
 assert(runbook == table.concat(vim.fn.readfile('examples/runbook.md'), '\n'))
 vim.cmd.enew()
 vim.bo.filetype = 'text'
-assert(vim.fn.maparg('<leader>md', 'n') == '')
+assert(vim.fn.maparg('<leader>xxd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for _, suffix in ipairs({ 'd', 't', 'c', 'r' }) do
-  local mapping = vim.fn.maparg('<leader>m' .. suffix, 'n', false, true)
-  assert(mapping.buffer == 1 and mapping.rhs:find('<Plug>%(MarkDo'))
+for key, action in pairs({ xx = 'Toggle', xxd = 'Done', xc = 'Copy', xe = 'Run' }) do
+  local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
+  assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
 local copied
 vim.g.clipboard = { name = 'README test', cache_enabled = 0,
@@ -42,7 +42,7 @@ vim.g.clipboard = { name = 'README test', cache_enabled = 0,
   paste = { ['+'] = function() return { { '' }, 'v' } end, ['*'] = function() return { { '' }, 'v' } end } }
 api.nvim_win_set_cursor(0, { 4, 0 })
 local source = api.nvim_get_current_buf()
-vim.cmd.MarkDoRun()
+vim.api.nvim_feedkeys('\\xe', 'xt', false)
 local term, win = api.nvim_get_current_buf(), api.nvim_get_current_win()
 assert(vim.wait(5000, function() return vim.b[term].markdo_exit_code ~= nil end, 10))
 assert(vim.b[term].markdo_exit_code == 0)
@@ -52,9 +52,9 @@ vim.cmd.stopinsert()
 for _, mapping in ipairs(api.nvim_buf_get_keymap(term, 'n')) do if mapping.lhs == 'q' then mapping.callback() end end
 assert(not api.nvim_win_is_valid(win))
 api.nvim_win_set_cursor(0, { 4, 0 })
-vim.cmd.MarkDoCopy()
+vim.api.nvim_feedkeys('\\xc', 'xt', false)
 assert(vim.deep_equal(copied, { { 'name=Neovim', [[printf 'Hello, %s!\n' "$name"]], 'sleep 1' }, 'v' }))
-vim.api.nvim_feedkeys('\\md', 'xt', false)
+vim.api.nvim_feedkeys('\\xxd', 'xt', false)
 assert(api.nvim_get_current_line() == '  - [x] Run the greeting')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
 api.nvim_win_set_cursor(0, { 10, 0 }); vim.cmd.MarkDoDone()
@@ -64,7 +64,7 @@ local completed = example('completed', 'markdown')
 for task in completed:gmatch('[^\n]+') do
   if task:find('%[x%]') then assert(vim.tbl_contains(api.nvim_buf_get_lines(0, 0, -1, false), task)) end
 end
-vim.cmd.MarkDoToggle()
+vim.api.nvim_feedkeys('\\xx', 'xt', false)
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
 vim.cmd.undo()
 assert(api.nvim_buf_get_lines(0, 9, 10, false)[1] == '  - [x] Review the output')

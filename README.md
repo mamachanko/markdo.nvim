@@ -55,10 +55,11 @@ vim.api.nvim_create_autocmd('FileType', {
   pattern = 'markdown',
   callback = function(ev)
     for key, action in pairs({
-      ['<leader>md'] = 'Done',
-      ['<leader>mt'] = 'Toggle',
-      ['<leader>mc'] = 'Copy',
-      ['<leader>mr'] = 'Run',
+      ['<leader>xx'] = 'Toggle',
+      ['<leader>xxd'] = 'Done',
+      ['<leader>xc'] = 'Copy',
+      ['<leader>xe'] = 'Run',
+      -- ['<leader>x<Space>'] = 'Run', -- Alternative to <leader>xe.
     }) do
       vim.keymap.set('n', key, '<Plug>(MarkDo' .. action .. ')',
         { buffer = ev.buf, desc = 'Mark Do ' .. action })
@@ -66,6 +67,8 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 ```
+
+These use lowercase `x`, `d`, `c`, and `e`. `<leader>x<Space>` is a comfortable alternative for Run: replace the `<leader>xe` entry with the commented entry above if you prefer it. Because `<leader>xx` is also the start of `<leader>xxd`, Toggle waits for Neovim's `timeoutlen` before firing; type the final `d` within that interval for Done.
 
 ## Quick start
 
