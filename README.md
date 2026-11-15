@@ -80,6 +80,7 @@ vim.api.nvim_create_autocmd('FileType', {
     for key, action in pairs({
       ['<leader>xx'] = 'Toggle',
       ['<leader>xd'] = 'Done',
+      ['<leader>xj'] = 'DoneNext',
       ['<leader>xc'] = 'Copy',
       ['<leader>xe'] = 'Run',
       ['<leader>xn'] = 'Next',
@@ -130,6 +131,8 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
 
 Toggle either child with `:MarkDoToggle` and the parent reopens. One undo reverses both changes.
 
+For repeated steps, `:MarkDoDoneNext` (optional `<leader>xj`) combines Done and Next: check the current task, then move to the next unfinished one.
+
 The fence belongs to **Run the greeting**, so put the cursor on that child to Copy or Run. Selecting the parent does not select its children's fences.
 
 ## Commands
@@ -138,6 +141,7 @@ The fence belongs to **Run the greeting**, so put the cursor on that child to Co
 | --- | --- | --- |
 | `:MarkDoToggle` | `<leader>xx` | Reverse the current task |
 | `:MarkDoDone` | `<leader>xd` | Check the current task; checked tasks stay checked |
+| `:MarkDoDoneNext` | `<leader>xj` | Check the current task and move to the next unfinished task |
 | `:MarkDoCopy` | `<leader>xc` | Copy the selected fence body to the `+` register |
 | `:MarkDoRun` | `<leader>xe` | Run the selected shell fence in a float |
 | `:MarkDoNext` | `<leader>xn` | Jump to the next unfinished task |
@@ -156,6 +160,7 @@ Use these normal-mode mappings in your own key configuration:
 | --- | --- |
 | `<Plug>(MarkDoToggle)` | `:MarkDoToggle` |
 | `<Plug>(MarkDoDone)` | `:MarkDoDone` |
+| `<Plug>(MarkDoDoneNext)` | `:MarkDoDoneNext` |
 | `<Plug>(MarkDoCopy)` | `:MarkDoCopy` |
 | `<Plug>(MarkDoRun)` | `:MarkDoRun` |
 | `<Plug>(MarkDoNext)` | `:MarkDoNext` |
@@ -174,6 +179,12 @@ The innermost checkbox item containing the cursor is the current task. Its scope
 After a checkbox changes, Mark Do recomputes its checkbox ancestors from the bottom up. A parent checks when **all descendant tasks are checked**, and reopens when any are open. Plain list items can contain tasks but have no checkbox state.
 
 Editing a parent with Done or Toggle leaves its descendants alone; the next changed descendant recomputes the parent. Manual text edits do not trigger updates. Each command changes only checkbox characters, preserves the cursor, and forms **one undo step**, including parent changes.
+
+### Complete and continue
+
+`:MarkDoDoneNext` checks the current task using the same scope and ancestor rules as Done, then moves to the next unfinished task after the cursor's line. It reads the updated buffer, skips checked tasks and code, opens destination folds, and does not wrap. Checkbox changes, including parent updates, remain one undo step.
+
+If the current task is already checked, it advances without changing any checkboxes or adding an undo step. If there is no following unfinished task, it keeps the completion, preserves the cursor, and reports a short message. Outside a task, it reports **No task at cursor** and leaves both text and cursor alone. The ordinary Done command continues to preserve the cursor.
 
 ### Completion progress
 

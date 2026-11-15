@@ -33,6 +33,9 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 
 :MarkDoDone                                                     *:MarkDoDone*
     Check the innermost task containing the cursor. Already checked: no action.
+:MarkDoDoneNext                                                 *:MarkDoDoneNext*
+    Check the current task, including ancestor roll-up, then move to the next
+    unfinished task after the cursor's line. See |markdo-done-next|.
 :MarkDoToggle                                                   *:MarkDoToggle*
     Reverse the innermost task containing the cursor.
 :MarkDoCopy                                                     *:MarkDoCopy*
@@ -52,6 +55,7 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
     Toggle inline progress beside parent tasks in the current buffer.
 
 <Plug>(MarkDoDone)                                              *markdo-mappings*
+<Plug>(MarkDoDoneNext)
 <Plug>(MarkDoToggle)
 <Plug>(MarkDoCopy)
 <Plug>(MarkDoRun)
@@ -74,6 +78,26 @@ reopens it. Plain list items have no checkbox state. Direct parent commands
 leave descendants alone. The next descendant change recomputes its ancestors.
 Manual text edits never trigger roll-up. Changes affect only checkbox characters,
 preserve the cursor and form one undo step per command, including roll-up.
+
+COMPLETE AND CONTINUE                                          *markdo-done-next*
+
+MarkDoDoneNext combines Done and Next. It uses the innermost task containing
+the cursor, checks that task, and recomputes its ancestors bottom up. All
+checkbox changes form one undo step. A directly checked parent still leaves
+its descendants alone; an unfinished child below the cursor can be the next
+destination.
+
+The updated buffer is parsed again for navigation. Search starts strictly
+after the cursor's line, skips checked tasks and code, crosses headings and
+opens destination folds. It does not wrap. An already checked task advances
+without changing checkbox text or adding an undo step.
+
+With no next unfinished task, completion remains and the cursor stays put,
+with a short message. Outside a task (including a sibling separator), report
+"No task at cursor" and do not change text or position. Missing parsers report
+the normal dependency error. The ordinary Done command remains stationary.
+
+See README.md for optional <leader>xj. No default key is assigned.
 
 PROGRESS                                                       *markdo-progress*
 

@@ -32,7 +32,7 @@ assert(vim.fn.maparg('<leader>xd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for key, action in pairs({ xx = 'Toggle', xd = 'Done', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
+for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'DoneNext', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
   local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
   assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
@@ -101,6 +101,16 @@ vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
 assert(_G.markdo_progress() == '')
 vim.bo.filetype = 'text'
 assert(_G.markdo_progress() == '')
+-- Exercise the optional complete-and-continue binding on the sample runbook.
+vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
+api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
+api.nvim_win_set_cursor(0, { 4, 2 })
+vim.api.nvim_feedkeys('\\xj', 'xt', false)
+assert(api.nvim_win_get_cursor(0)[1] == 10)
+assert(api.nvim_buf_get_lines(0, 3, 4, false)[1] == '  - [x] Run the greeting')
+assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
+vim.cmd.undo()
+assert(table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') == runbook)
 vim.fn.delete(temp, 'rf')
 print('README install, keymap, Copy, Run, Done, and roll-up examples passed')
 vim.cmd.qa({ bang = true })

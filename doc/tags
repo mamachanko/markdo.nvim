@@ -1,5 +1,6 @@
 :MarkDoCopy	markdo.txt	/*:MarkDoCopy*
 :MarkDoDone	markdo.txt	/*:MarkDoDone*
+:MarkDoDoneNext	markdo.txt	/*:MarkDoDoneNext*
 :MarkDoNext	markdo.txt	/*:MarkDoNext*
 :MarkDoPrev	markdo.txt	/*:MarkDoPrev*
 :MarkDoProgress	markdo.txt	/*:MarkDoProgress*
@@ -8,6 +9,7 @@
 :MarkDoToggle	markdo.txt	/*:MarkDoToggle*
 markdo	markdo.txt	/*markdo*
 markdo-commands	markdo.txt	/*markdo-commands*
+markdo-done-next	markdo.txt	/*markdo-done-next*
 markdo-fences	markdo.txt	/*markdo-fences*
 markdo-health	markdo.txt	/*markdo-health*
 markdo-inline-progress	markdo.txt	/*markdo-inline-progress*
