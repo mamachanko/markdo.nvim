@@ -37,6 +37,24 @@ local function change(toggle)
 end
 function M.done() change(false) end
 function M.toggle() change(true) end
+local function navigate(direction)
+  local data = read(); if not data then return end
+  local row = vim.api.nvim_win_get_cursor(0)[1] - 1
+  local first, last = 1, #data.tasks
+  if direction < 0 then first, last = last, first end
+  for i = first, last, direction do
+    local task = data.tasks[i]
+    if not task.checked and (task.row - row) * direction > 0 then
+      vim.cmd("normal! m'")
+      vim.api.nvim_win_set_cursor(0, { task.row + 1, task.col })
+      vim.cmd('normal! zv')
+      return
+    end
+  end
+  message(direction > 0 and 'No next unfinished task' or 'No previous unfinished task')
+end
+function M.next() navigate(1) end
+function M.prev() navigate(-1) end
 local function fence_action(action)
   local data = read(); if not data then return end
   local win = vim.api.nvim_get_current_win()
@@ -62,7 +80,7 @@ function M.run()
 end
 function M.attach(buf)
   if vim.bo[buf].filetype ~= 'markdown' then return end
-  for suffix, action in pairs({ Done = 'done', Toggle = 'toggle', Copy = 'copy', Run = 'run' }) do
+  for suffix, action in pairs({ Done = 'done', Toggle = 'toggle', Copy = 'copy', Run = 'run', Next = 'next', Prev = 'prev' }) do
     vim.api.nvim_buf_create_user_command(buf, 'MarkDo' .. suffix, M[action], { desc = 'Mark Do: ' .. action, force = true })
     vim.keymap.set('n', '<Plug>(MarkDo' .. suffix .. ')', M[action], { buffer = buf, silent = true, desc = 'Mark Do: ' .. action })
   end

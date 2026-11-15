@@ -1,11 +1,14 @@
 :MarkDoCopy	markdo.txt	/*:MarkDoCopy*
 :MarkDoDone	markdo.txt	/*:MarkDoDone*
+:MarkDoNext	markdo.txt	/*:MarkDoNext*
+:MarkDoPrev	markdo.txt	/*:MarkDoPrev*
 :MarkDoRun	markdo.txt	/*:MarkDoRun*
 :MarkDoToggle	markdo.txt	/*:MarkDoToggle*
 markdo	markdo.txt	/*markdo*
 markdo-commands	markdo.txt	/*markdo-commands*
 markdo-fences	markdo.txt	/*markdo-fences*
 markdo-mappings	markdo.txt	/*markdo-mappings*
+markdo-navigation	markdo.txt	/*markdo-navigation*
 markdo-tasks	markdo.txt	/*markdo-tasks*
 markdo-terminal	markdo.txt	/*markdo-terminal*
 markdo-testing	markdo.txt	/*markdo-testing*
