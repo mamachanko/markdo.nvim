@@ -56,6 +56,7 @@ api.nvim_win_set_cursor(0, { 5, 0 }); md.toggle(); eq(lines()[1], '- [x] parent'
 dofile('tests/navigation.lua')(eq, buffer, notices)
 dofile('tests/progress.lua')(eq, buffer, notices)
 dofile('tests/inline.lua')(eq, buffer, notices)
+dofile('tests/health.lua')(eq)
 -- Clipboard provider stub: preserve all other registers and exact characterwise body.
 local copied
 vim.g.clipboard = { name = 'test', copy = { ['+'] = function(ls, rt) copied = { ls, rt } end, ['*'] = function() end },
@@ -132,5 +133,7 @@ md.done(); assert(notices[#notices]:find('TSInstall markdown'))
 vim.treesitter.get_parser = get_parser
 local isolated = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l', 'tests/no_clipboard.lua' })
 assert(vim.v.shell_error == 0, isolated)
+local health_output = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l', 'tests/health_command.lua' })
+assert(vim.v.shell_error == 0, health_output)
 print(('Mark Do: %d checks passed on %s'):format(count, tostring(vim.version())))
 vim.cmd.qa({ bang = true })
