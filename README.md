@@ -82,6 +82,7 @@ vim.api.nvim_create_autocmd('FileType', {
       ['<leader>xe'] = 'Run',
       ['<leader>xn'] = 'Next',
       ['<leader>xp'] = 'Prev',
+      ['<leader>xs'] = 'Progress',
       -- ['<leader>x<Space>'] = 'Run', -- Alternative to <leader>xe.
     }) do
       vim.keymap.set('n', key, '<Plug>(MarkDo' .. action .. ')',
@@ -138,6 +139,7 @@ The fence belongs to **Run the greeting**, so put the cursor on that child to Co
 | `:MarkDoRun` | `<leader>xe` | Run the selected shell fence in a float |
 | `:MarkDoNext` | `<leader>xn` | Jump to the next unfinished task |
 | `:MarkDoPrev` | `<leader>xp` | Jump to the previous unfinished task |
+| `:MarkDoProgress` | `<leader>xs` | Show completion for the current buffer |
 
 Example keys come from the [optional keymaps](#optional-keymaps) above. The plugin assigns none by default. Commands and mappings are buffer-local to Markdown, including buffers open before the plugin loads.
 
@@ -154,6 +156,7 @@ Use these normal-mode mappings in your own key configuration:
 | `<Plug>(MarkDoRun)` | `:MarkDoRun` |
 | `<Plug>(MarkDoNext)` | `:MarkDoNext` |
 | `<Plug>(MarkDoPrev)` | `:MarkDoPrev` |
+| `<Plug>(MarkDoProgress)` | `:MarkDoProgress` |
 
 </details>
 
@@ -166,6 +169,37 @@ The innermost checkbox item containing the cursor is the current task. Its scope
 After a checkbox changes, Mark Do recomputes its checkbox ancestors from the bottom up. A parent checks when **all descendant tasks are checked**, and reopens when any are open. Plain list items can contain tasks but have no checkbox state.
 
 Editing a parent with Done or Toggle leaves its descendants alone; the next changed descendant recomputes the parent. Manual text edits do not trigger updates. Each command changes only checkbox characters, preserves the cursor, and forms **one undo step**, including parent changes.
+
+### Completion progress
+
+`:MarkDoProgress` reports completion for the whole current buffer, for example `Mark Do: 6/8 tasks complete (75%)`. The optional `<leader>xs` binding above shows this summary.
+
+Progress counts **checkbox tasks with no checkbox descendants**. A parent with two children contributes its two children to the total. A standalone task counts once; plain list items and checkbox text inside code do not count. A manually checked parent with an open child still has incomplete progress.
+
+The percentage rounds to the nearest whole number. An empty checklist reports **No tasks**. Progress reads unsaved edits and leaves the Markdown unchanged.
+
+<details>
+<summary>Statusline integration and Lua API</summary>
+
+`require('markdo').progress(bufnr)` returns `{ completed, total, percent }` for a Markdown buffer. Omit `bufnr` or pass `0` for the current buffer. With no tasks, `completed` and `total` are `0` and `percent` is `nil`. On an unavailable parser or an invalid, unloaded, or non-Markdown buffer, it returns `nil, error` without notifying. Results are cached until the buffer changes.
+
+For Neovim's built-in statusline, add this optional example to `init.lua`:
+
+<!-- example:statusline -->
+```lua
+function _G.markdo_progress()
+  if vim.bo.filetype ~= 'markdown' then return '' end
+  local progress = require('markdo').progress()
+  if not progress or progress.total == 0 then return '' end
+  return ('%d/%d (%d%%)'):format(
+    progress.completed, progress.total, progress.percent)
+end
+vim.opt.statusline:append(' %{v:lua.markdo_progress()}')
+```
+
+The helper returns an empty string for buffers without a checklist. Mark Do does not modify your statusline by default.
+
+</details>
 
 ### Navigating unfinished tasks
 

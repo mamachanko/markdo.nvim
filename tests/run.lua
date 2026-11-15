@@ -18,6 +18,7 @@ end
 buffer({ '- [ ] old' })
 vim.cmd('runtime plugin/markdo.lua')
 eq(vim.fn.exists(':MarkDoDone'), 2)
+eq(vim.fn.exists(':MarkDoProgress'), 2)
 eq(vim.fn.exists(':MarkDoNext'), 2); eq(vim.fn.exists(':MarkDoPrev'), 2)
 local md = require('markdo')
 local parse = require('markdo.parse')
@@ -52,6 +53,7 @@ buffer({ '- [ ] parent', '  first', '', '  second', '', '- [ ] sibling' }, 3)
 md.done(); eq(lines()[1], '- [x] parent')
 api.nvim_win_set_cursor(0, { 5, 0 }); md.toggle(); eq(lines()[1], '- [x] parent')
 dofile('tests/navigation.lua')(eq, buffer, notices)
+dofile('tests/progress.lua')(eq, buffer, notices)
 -- Clipboard provider stub: preserve all other registers and exact characterwise body.
 local copied
 vim.g.clipboard = { name = 'test', copy = { ['+'] = function(ls, rt) copied = { ls, rt } end, ['*'] = function() end },
