@@ -56,7 +56,7 @@ vim.api.nvim_create_autocmd('FileType', {
   callback = function(ev)
     for key, action in pairs({
       ['<leader>xx'] = 'Toggle',
-      ['<leader>xxd'] = 'Done',
+      ['<leader>xd'] = 'Done',
       ['<leader>xc'] = 'Copy',
       ['<leader>xe'] = 'Run',
       -- ['<leader>x<Space>'] = 'Run', -- Alternative to <leader>xe.
@@ -68,7 +68,7 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 ```
 
-These use lowercase `x`, `d`, `c`, and `e`. `<leader>x<Space>` is a comfortable alternative for Run: replace the `<leader>xe` entry with the commented entry above if you prefer it. Because `<leader>xx` is also the start of `<leader>xxd`, Toggle waits for Neovim's `timeoutlen` before firing; type the final `d` within that interval for Done.
+These use lowercase `x`, `d`, `c`, and `e`. `<leader>x<Space>` is a comfortable alternative for Run: replace the `<leader>xe` entry with the commented entry above if you prefer it.
 
 ## Quick start
 

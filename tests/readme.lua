@@ -28,11 +28,11 @@ local runbook = example('runbook', 'markdown', '````')
 assert(runbook == table.concat(vim.fn.readfile('examples/runbook.md'), '\n'))
 vim.cmd.enew()
 vim.bo.filetype = 'text'
-assert(vim.fn.maparg('<leader>xxd', 'n') == '')
+assert(vim.fn.maparg('<leader>xd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for key, action in pairs({ xx = 'Toggle', xxd = 'Done', xc = 'Copy', xe = 'Run' }) do
+for key, action in pairs({ xx = 'Toggle', xd = 'Done', xc = 'Copy', xe = 'Run' }) do
   local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
   assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
@@ -54,7 +54,7 @@ assert(not api.nvim_win_is_valid(win))
 api.nvim_win_set_cursor(0, { 4, 0 })
 vim.api.nvim_feedkeys('\\xc', 'xt', false)
 assert(vim.deep_equal(copied, { { 'name=Neovim', [[printf 'Hello, %s!\n' "$name"]], 'sleep 1' }, 'v' }))
-vim.api.nvim_feedkeys('\\xxd', 'xt', false)
+vim.api.nvim_feedkeys('\\xd', 'xt', false)
 assert(api.nvim_get_current_line() == '  - [x] Run the greeting')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
 api.nvim_win_set_cursor(0, { 10, 0 }); vim.cmd.MarkDoDone()
