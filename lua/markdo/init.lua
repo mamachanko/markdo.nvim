@@ -6,6 +6,16 @@ local function read()
   if not data then message(err) end
   return data
 end
+local function apply_changes(buf, changes)
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  -- Start a fresh undo block even for consecutive API calls; join only our edits.
+  vim.cmd('let &undolevels = &undolevels')
+  for i, t in ipairs(changes) do
+    if i > 1 then vim.cmd.undojoin() end
+    vim.api.nvim_buf_set_text(buf, t.row, t.col + 1, t.row, t.col + 2, { t.checked and 'x' or ' ' })
+  end
+  vim.api.nvim_win_set_cursor(0, cursor)
+end
 local function change(toggle)
   local data = read(); if not data then return end
   local task = data:task_at(vim.api.nvim_win_get_cursor(0)[1] - 1)
@@ -26,18 +36,18 @@ local function change(toggle)
     if parent.checked ~= all then parent.checked = all; changes[#changes + 1] = parent end
     parent = parent.parent
   end
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  -- Start a fresh undo block even for consecutive API calls; join only our edits.
-  vim.cmd('let &undolevels = &undolevels')
-  for i, t in ipairs(changes) do
-    if i > 1 then vim.cmd.undojoin() end
-    vim.api.nvim_buf_set_text(data.buf, t.row, t.col + 1, t.row, t.col + 2, { t.checked and 'x' or ' ' })
-  end
-  vim.api.nvim_win_set_cursor(0, cursor)
+  apply_changes(data.buf, changes)
   return true
 end
 function M.done() change(false) end
 function M.toggle() change(true) end
+function M.reset(scope)
+  local data = read(); if not data then return end
+  local changes, err = require('markdo.reset').prepare(data, vim.api.nvim_win_get_cursor(0)[1] - 1, scope)
+  if not changes then message(err); return end
+  if #changes == 0 then message('Tasks already open'); return end
+  apply_changes(data.buf, changes)
+end
 local function navigate(direction)
   local data = read(); if not data then return end
   local row = vim.api.nvim_win_get_cursor(0)[1] - 1
@@ -99,9 +109,18 @@ function M.attach(buf)
   for suffix, action in pairs({
     Done = 'done', DoneNext = 'done_next', Toggle = 'toggle', Copy = 'copy', Run = 'run',
     Next = 'next', Prev = 'prev', Progress = 'show_progress',
-    ProgressToggle = 'toggle_inline_progress',
+    ProgressToggle = 'toggle_inline_progress', Reset = 'reset',
   }) do
-    vim.api.nvim_buf_create_user_command(buf, 'MarkDo' .. suffix, M[action], { desc = 'Mark Do: ' .. action, force = true })
+    local callback = M[action]
+    local options = { desc = 'Mark Do: ' .. action, force = true }
+    if action == 'reset' then
+      callback = function(opts) M.reset(opts.args) end
+      options.nargs = '?'
+      options.complete = function(lead)
+        return vim.tbl_filter(function(scope) return vim.startswith(scope, lead) end, { 'task', 'section', 'buffer' })
+      end
+    end
+    vim.api.nvim_buf_create_user_command(buf, 'MarkDo' .. suffix, callback, options)
     vim.keymap.set('n', '<Plug>(MarkDo' .. suffix .. ')', M[action], { buffer = buf, silent = true, desc = 'Mark Do: ' .. action })
   end
 end

@@ -5,6 +5,7 @@
 :MarkDoPrev	markdo.txt	/*:MarkDoPrev*
 :MarkDoProgress	markdo.txt	/*:MarkDoProgress*
 :MarkDoProgressToggle	markdo.txt	/*:MarkDoProgressToggle*
+:MarkDoReset	markdo.txt	/*:MarkDoReset*
 :MarkDoRun	markdo.txt	/*:MarkDoRun*
 :MarkDoToggle	markdo.txt	/*:MarkDoToggle*
 markdo	markdo.txt	/*markdo*
@@ -16,6 +17,7 @@ markdo-inline-progress	markdo.txt	/*markdo-inline-progress*
 markdo-mappings	markdo.txt	/*markdo-mappings*
 markdo-navigation	markdo.txt	/*markdo-navigation*
 markdo-progress	markdo.txt	/*markdo-progress*
+markdo-reset	markdo.txt	/*markdo-reset*
 markdo-tasks	markdo.txt	/*markdo-tasks*
 markdo-terminal	markdo.txt	/*markdo-terminal*
 markdo-testing	markdo.txt	/*markdo-testing*

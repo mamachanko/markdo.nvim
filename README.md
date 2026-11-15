@@ -81,6 +81,7 @@ vim.api.nvim_create_autocmd('FileType', {
       ['<leader>xx'] = 'Toggle',
       ['<leader>xd'] = 'Done',
       ['<leader>xj'] = 'DoneNext',
+      ['<leader>xr'] = 'Reset',
       ['<leader>xc'] = 'Copy',
       ['<leader>xe'] = 'Run',
       ['<leader>xn'] = 'Next',
@@ -142,6 +143,7 @@ The fence belongs to **Run the greeting**, so put the cursor on that child to Co
 | `:MarkDoToggle` | `<leader>xx` | Reverse the current task |
 | `:MarkDoDone` | `<leader>xd` | Check the current task; checked tasks stay checked |
 | `:MarkDoDoneNext` | `<leader>xj` | Check the current task and move to the next unfinished task |
+| `:MarkDoReset [scope]` | `<leader>xr` | Reopen the current task subtree, section, or buffer |
 | `:MarkDoCopy` | `<leader>xc` | Copy the selected fence body to the `+` register |
 | `:MarkDoRun` | `<leader>xe` | Run the selected shell fence in a float |
 | `:MarkDoNext` | `<leader>xn` | Jump to the next unfinished task |
@@ -161,6 +163,7 @@ Use these normal-mode mappings in your own key configuration:
 | `<Plug>(MarkDoToggle)` | `:MarkDoToggle` |
 | `<Plug>(MarkDoDone)` | `:MarkDoDone` |
 | `<Plug>(MarkDoDoneNext)` | `:MarkDoDoneNext` |
+| `<Plug>(MarkDoReset)` | `:MarkDoReset` |
 | `<Plug>(MarkDoCopy)` | `:MarkDoCopy` |
 | `<Plug>(MarkDoRun)` | `:MarkDoRun` |
 | `<Plug>(MarkDoNext)` | `:MarkDoNext` |
@@ -185,6 +188,22 @@ Editing a parent with Done or Toggle leaves its descendants alone; the next chan
 `:MarkDoDoneNext` checks the current task using the same scope and ancestor rules as Done, then moves to the next unfinished task after the cursor's line. It reads the updated buffer, skips checked tasks and code, opens destination folds, and does not wrap. Checkbox changes, including parent updates, remain one undo step.
 
 If the current task is already checked, it advances without changing any checkboxes or adding an undo step. If there is no following unfinished task, it keeps the completion, preserves the cursor, and reports a short message. Outside a task, it reports **No task at cursor** and leaves both text and cursor alone. The ordinary Done command continues to preserve the cursor.
+
+### Resetting a checklist
+
+Use Reset to prepare a runbook for another run. Choose the scope explicitly when going beyond the task at the cursor:
+
+| Command | Scope |
+| --- | --- |
+| `:MarkDoReset` or `:MarkDoReset task` | Current checkbox task and all its checkbox descendants |
+| `:MarkDoReset section` | Current heading section, including subheadings |
+| `:MarkDoReset buffer` | All checkbox tasks in the current buffer |
+
+The optional `<leader>xr` binding uses the default **task** scope. Place the cursor on the parent, its continuation text, or its code to reset that subtree. Blank sibling separators and positions outside a task report a message; they do not expand the scope.
+
+A section ends at the next heading of the same or higher level and stays within its Markdown container. Both ATX (`# Heading`) and setext headings work. Before the first document heading, section scope covers only the preamble; without document headings, the preamble is the whole buffer. Put the cursor on a parent heading to include its subheadings.
+
+Reset changes checked `[x]`/`[X]` markers to `[ ]`, preserves the cursor and all other text, and leaves checkbox text inside code alone. It also reopens checked ancestors of changed tasks outside the chosen scope. The entire operation is **one undo step**, including ancestor changes. If the selected tasks are already open, nothing changes, including ancestor states and undo history. Progress summaries refresh automatically.
 
 ### Completion progress
 
