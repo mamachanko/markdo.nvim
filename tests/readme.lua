@@ -32,7 +32,7 @@ assert(vim.fn.maparg('<leader>xd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'DoneNext', xr = 'Reset', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
+for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'DoneNext', xr = 'Reset', xf = 'FocusToggle', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
   local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
   assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
@@ -79,6 +79,14 @@ assert(inline_text() == '  2/2 · 100%')
 key('x'); assert(_G.markdo_progress() == '1/2 (50%)')
 vim.cmd.undo(); assert(_G.markdo_progress() == '2/2 (100%)')
 assert(vim.wait(1000, function() return inline_text() == '  2/2 · 100%' end, 5))
+-- Focus completed branches, then restore the view before resetting.
+local focus_cursor = api.nvim_win_get_cursor(0)
+key('f')
+assert(vim.fn.foldclosed(3) == 3 and vim.fn.foldclosedend(3) == 10)
+assert(vim.fn.foldclosed(1) == -1)
+key('f')
+assert(vim.fn.foldclosed(3) == -1)
+assert(vim.deep_equal(api.nvim_win_get_cursor(0), focus_cursor))
 -- Reopen the sample with each reset scope; every reset is one undo step.
 at(3); key('r')
 assert(content() == runbook and api.nvim_win_get_cursor(0)[1] == 3)

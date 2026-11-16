@@ -81,6 +81,11 @@ function M.toggle_inline_progress()
   if enabled == nil then message(err); return end
   message('Inline progress ' .. (enabled and 'enabled' or 'disabled'))
 end
+function M.toggle_focus()
+  local enabled, err = require('markdo.focus').toggle()
+  if enabled == nil then message(err); return end
+  message('Focus ' .. (enabled and 'enabled' or 'disabled'))
+end
 local function fence_action(action)
   local data = read(); if not data then return end
   local win = vim.api.nvim_get_current_win()
@@ -109,7 +114,7 @@ function M.attach(buf)
   for suffix, action in pairs({
     Done = 'done', DoneNext = 'done_next', Toggle = 'toggle', Copy = 'copy', Run = 'run',
     Next = 'next', Prev = 'prev', Progress = 'show_progress',
-    ProgressToggle = 'toggle_inline_progress', Reset = 'reset',
+    ProgressToggle = 'toggle_inline_progress', Reset = 'reset', FocusToggle = 'toggle_focus',
   }) do
     local callback = M[action]
     local options = { desc = 'Mark Do: ' .. action, force = true }

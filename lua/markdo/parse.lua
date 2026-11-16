@@ -15,7 +15,7 @@ function M.read(buf)
   if not success or not trees[1] then return nil, 'Could not parse Markdown' end
   local data = {
     buf = buf, lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false),
-    tasks = {}, fences = {}, headings = {}, sections = {}, item_tails = {},
+    tasks = {}, fences = {}, headings = {}, heading_ranges = {}, sections = {}, item_tails = {},
   }
   local function visit(node, owner)
     local kind = node:type()
@@ -50,8 +50,11 @@ function M.read(buf)
     elseif kind == 'atx_heading' or kind == 'setext_heading' then
       local row = node:range()
       data.headings[#data.headings + 1] = row
+      local heading_range = { first = row, last = row }
+      data.heading_ranges[#data.heading_ranges + 1] = heading_range
       local level
       for child in node:iter_children() do
+        if child:type():match('^setext_h[12]_underline$') then heading_range.last = child:range() end
         level = level or tonumber(child:type():match('^atx_h([1-6])_marker$')
           or child:type():match('^setext_h([12])_underline$'))
       end

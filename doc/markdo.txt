@@ -38,6 +38,8 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
     unfinished task after the cursor's line. See |markdo-done-next|.
 :MarkDoReset [scope]                                            *:MarkDoReset*
     Reopen tasks in task (default), section, or buffer scope. See |markdo-reset|.
+:MarkDoFocusToggle                                              *:MarkDoFocusToggle*
+    Toggle window-local folding of fully completed branches. See |markdo-focus|.
 :MarkDoToggle                                                   *:MarkDoToggle*
     Reverse the innermost task containing the cursor.
 :MarkDoCopy                                                     *:MarkDoCopy*
@@ -59,6 +61,7 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 <Plug>(MarkDoDone)                                              *markdo-mappings*
 <Plug>(MarkDoDoneNext)
 <Plug>(MarkDoReset)
+<Plug>(MarkDoFocusToggle)
 <Plug>(MarkDoToggle)
 <Plug>(MarkDoCopy)
 <Plug>(MarkDoRun)
@@ -184,6 +187,37 @@ task on that same line regardless of column. From continuation text or code,
 Prev can return to the containing task's checkbox. At a boundary or with no
 match, a short message appears and the cursor stays put. Navigation does not
 wrap, reads unsaved edits, and never changes buffer contents or checkbox state.
+
+FOCUS MODE                                                     *markdo-focus*
+
+MarkDoFocusToggle folds completed task branches in the current window. Require
+both the task's own checkbox and every checkbox descendant to be checked.
+A manually checked parent with an open child stays visible; completed children
+of incomplete parents can still fold. Include continuation text, plain list
+children, and fences in a completed branch. Keep real headings and their
+surrounding whitespace separators visible. Code does not create tasks or
+independent folds.
+
+Off by default, independently enabled per window. Edits, Done/Toggle/Reset,
+undo and redo refresh Focus on the next event-loop turn. Markdown text, modified
+state and undo history are unchanged. Temporary folds use Neovim's standard
+fold text. You can open a fold with zo; the next edit recomputes Focus folds.
+
+Toggle off to restore the previous fold options, manual fold definitions,
+open/closed exceptions, cursor and scroll view. Saved positions track edits;
+deleted folds are skipped. Fold changes made during Focus are temporary.
+A new split starts with the original user's folds; existing windows are
+independent. Switching windows keeps Focus active. Changing the displayed
+buffer, leaving Markdown filetype, unloading, or closing cleans up Focus.
+
+Normal and scratch Markdown buffers are supported. Capturing fold state uses
+Neovim's view writer in a temporary file; the file is deleted immediately and
+only fold operations are replayed. If saving fails, Focus leaves the original
+view untouched and reports "Could not save folds"; check your temporary
+directory permissions. Initial parser errors report the dependency. Background
+parser failures open the work and retry after the next edit without messages.
+
+See README.md for optional <leader>xf. No setup or default key is required.
 
 FENCES                                                         *markdo-fences*
 

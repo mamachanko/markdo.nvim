@@ -84,6 +84,7 @@ vim.api.nvim_create_autocmd('FileType', {
       ['<leader>xd'] = 'Done',
       ['<leader>xj'] = 'DoneNext',
       ['<leader>xr'] = 'Reset',
+      ['<leader>xf'] = 'FocusToggle',
       ['<leader>xc'] = 'Copy',
       ['<leader>xe'] = 'Run',
       ['<leader>xn'] = 'Next',
@@ -131,8 +132,9 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
 ```
 
 3. **Inspect progress.** Use `:MarkDoProgress` for the summary and `:MarkDoProgressToggle` for inline parent counts. Toggle the child with `:MarkDoToggle` and the parent reopens; one undo restores both.
-4. **Reset.** Put the cursor on the parent (line 3) and use `:MarkDoReset` to reopen it and both children in one undo step. Section and whole-buffer scopes are also available below.
-5. **Execute.** Return to **Run the greeting** (line 4) and use `:MarkDoRun`. The float prints `Hello, Neovim!`, pauses one second, and shows `exit 0`. Press `Ctrl-\`, then `Ctrl-N` to leave terminal mode, then **q** to close the completed float. Running the script leaves the checklist open.
+4. **Focus.** Use `:MarkDoFocusToggle` to fold completed branches. Toggle it again to restore your previous folds and view before continuing.
+5. **Reset.** Put the cursor on the parent (line 3) and use `:MarkDoReset` to reopen it and both children in one undo step. Section and whole-buffer scopes are also available below.
+6. **Execute.** Return to **Run the greeting** (line 4) and use `:MarkDoRun`. The float prints `Hello, Neovim!`, pauses one second, and shows `exit 0`. Press `Ctrl-\`, then `Ctrl-N` to leave terminal mode, then **q** to close the completed float. Running the script leaves the checklist open.
 
 ## Commands
 
@@ -142,6 +144,7 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
 | `:MarkDoDone` | `<leader>xd` | Check the current task; checked tasks stay checked |
 | `:MarkDoDoneNext` | `<leader>xj` | Check the current task and move to the next unfinished task |
 | `:MarkDoReset [scope]` | `<leader>xr` | Reopen the current task subtree, section, or buffer |
+| `:MarkDoFocusToggle` | `<leader>xf` | Fold completed branches in the current window |
 | `:MarkDoCopy` | `<leader>xc` | Copy the selected fence body to the `+` register |
 | `:MarkDoRun` | `<leader>xe` | Run the selected shell fence in a float |
 | `:MarkDoNext` | `<leader>xn` | Jump to the next unfinished task |
@@ -162,6 +165,7 @@ Use these normal-mode mappings in your own key configuration:
 | `<Plug>(MarkDoDone)` | `:MarkDoDone` |
 | `<Plug>(MarkDoDoneNext)` | `:MarkDoDoneNext` |
 | `<Plug>(MarkDoReset)` | `:MarkDoReset` |
+| `<Plug>(MarkDoFocusToggle)` | `:MarkDoFocusToggle` |
 | `<Plug>(MarkDoCopy)` | `:MarkDoCopy` |
 | `<Plug>(MarkDoRun)` | `:MarkDoRun` |
 | `<Plug>(MarkDoNext)` | `:MarkDoNext` |
@@ -254,6 +258,16 @@ The helper returns an empty string for buffers without a checklist. Mark Do does
 `:MarkDoNext` and `:MarkDoPrev` move to the checkbox of the next or previous unchecked task in the current buffer. They follow document order across headings, include unfinished parent and child tasks, and skip checked tasks and checkbox text inside fences. Closed folds at the destination open automatically.
 
 Navigation searches strictly after or before the **cursor's line**, so repeating a command moves on from the task under the cursor. From continuation text or code, Prev can return to that task's checkbox. At either end, a short message appears and the cursor stays put; navigation does not wrap. Both commands read unsaved edits and leave the checklist unchanged.
+
+### Focus mode
+
+`:MarkDoFocusToggle` (optional `<leader>xf`) folds completed task branches in the **current window**. A branch is complete only when its own checkbox and every checkbox descendant are checked. A manually checked parent with an open child stays visible; completed children within unfinished branches can still fold. Real headings remain visible, including headings inside tasks. Checkbox-like code never creates a task or a separate fold.
+
+Focus is **off by default**. It refreshes after edits, completion commands, reset, undo, and redo, without changing Markdown or adding undo entries. New splits start with your original folds, and existing windows keep independent views.
+
+Toggle it off to restore the prior fold settings, fold definitions, open/closed states, cursor, and scroll view. Saved fold positions follow edits. While Focus is active it manages the window's folds: you can use `zo` to peek, and the next edit recomputes the Focus folds. Folding changes made during Focus are temporary.
+
+Switching windows keeps Focus active. Displaying another buffer in that window, changing filetype away from Markdown, or closing the window ends it. Normal files and Markdown scratch buffers are supported.
 
 ### Fence selection
 
