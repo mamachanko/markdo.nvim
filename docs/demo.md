@@ -1,6 +1,6 @@
 # README demo
 
-[demo.gif](demo.gif) is a roughly **38-second recording of real Neovim 0.11.0**
+[demo.gif](demo.gif) is a roughly **42-second recording of real Neovim 0.11.0**
 at **40 columns × 18 rows**. It uses [examples/demo.md](../examples/demo.md), a
 small interactive runbook with a separate Archive section to make reset scopes
 visible. The README quick start uses the simpler [runbook.md](../examples/runbook.md).
@@ -13,6 +13,7 @@ visible. The README quick start uses the simpler [runbook.md](../examples/runboo
 | Navigation | Next and Prev between unfinished tasks |
 | Completion | Done and Next, Done, Toggle, automatic parent completion and reopening |
 | Progress | Whole-buffer summary, optional statusline, and inline parent counts |
+| Focus | Fold completed branches, keep headings visible, then restore the previous view |
 | Reset | Task subtree, section, and buffer scopes; undo; Archive preserved until buffer reset |
 | Copy | Fence-body copy, then `:echo getreg('+')` to inspect the actual clipboard contents |
 | Execute | **Last:** an interactive shell fence, typed input, live output, exit 0, and closing the float |

@@ -16,6 +16,8 @@ M.steps = {
   { id = 'inline', command = 'MarkDoProgressToggle', hold = 1500 },
   { id = 'progress', command = 'MarkDoProgress', hold = 1600 },
   { id = 'done', command = 'MarkDoDone', hold = 1500 },
+  { id = 'focus_on', command = 'MarkDoFocusToggle', hold = 1500 },
+  { id = 'focus_off', command = 'MarkDoFocusToggle', hold = 1500 },
   { id = 'toggle', command = 'MarkDoToggle', hold = 1400 },
   { id = 'reset_task', command = 'MarkDoReset', hold = 1300 },
   { id = 'undo_task', command = 'undo', hold = 800 },
@@ -108,6 +110,14 @@ function M.check(id)
     inline('  1/2 · 50%'); progress(2, 3)
   elseif id == 'done' then
     assert(text[3] == '- [x] Ready for the day' and text[11] == '  - [x] Review the output')
+    inline('  2/2 · 100%'); progress(3, 3)
+  elseif id == 'focus_on' then
+    assert(vim.fn.foldclosed(3) == 3 and vim.fn.foldclosedend(3) == 11)
+    assert(vim.fn.foldclosed(1) == -1 and vim.fn.foldclosed(13) == -1)
+    progress(3, 3)
+  elseif id == 'focus_off' then
+    assert(vim.fn.foldclosed(3) == -1)
+    assert(api.nvim_win_get_cursor(0)[1] == 11, 'Focus must restore the previous cursor')
     inline('  2/2 · 100%'); progress(3, 3)
   elseif id == 'toggle' or id == 'undo_task' or id == 'undo_section' then
     assert(text[3] == '- [ ] Ready for the day' and text[11] == '  - [ ] Review the output')
