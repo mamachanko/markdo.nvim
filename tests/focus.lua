@@ -62,9 +62,11 @@ return function(eq, buffer, notices)
   buffer({ '- [x] done', '  body', '- [ ] open' })
   local name = vim.fn.tempname() .. '.md'
   a.nvim_buf_set_name(0, name)
+  -- Neovim resolves directory symlinks, including macOS /var -> /private/var.
+  local assigned_name = a.nvim_buf_get_name(0)
   vim.wo.foldmethod = 'manual'; vim.cmd('1,2fold')
   md.toggle_focus(); md.toggle_focus()
-  eq(a.nvim_buf_get_name(0), name); eq(vim.fn.filereadable(name), 0); eq(closed(1), 1)
+  eq(a.nvim_buf_get_name(0), assigned_name); eq(vim.fn.filereadable(name), 0); eq(closed(1), 1)
   -- Computed fold options and closed exceptions are restored too.
   buffer({ 'top', 'a', 'b', 'c', 'bottom' })
   vim.wo.foldmethod = 'expr'; vim.wo.foldexpr = 'v:lnum >= 2 && v:lnum <= 4 ? 1 : 0'
