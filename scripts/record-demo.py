@@ -93,13 +93,25 @@ def rpc(method, *params):
     return result
 
 
-font = ImageFont.truetype(args.font, 22)
-cell_width, cell_height, padding = 14, 29, 12
+font = ImageFont.truetype(args.font, 20)
+key_font = ImageFont.truetype(args.font, 18)
+legend_font = ImageFont.truetype(args.font, 13)
+cell_width, cell_height, padding, footer_height = 13, 26, 12, 76
 
 
-def capture(milliseconds):
+def keycaps(keys):
+    if keys == 'Neovim<CR>':
+        return ['Neovim', 'Enter']
+    if keys == '<C-\\><C-n>':
+        return ['Ctrl+\\', 'Ctrl+N']
+    return ['Space' if char == ' ' else char for char in keys]
+
+
+def capture(milliseconds, keys='', label='Markdown runbooks in Neovim'):
     pump()
-    im = Image.new('RGB', (len(grid[0]) * cell_width + padding * 2, len(grid) * cell_height + padding * 2), f'#{background:06x}')
+    width = len(grid[0]) * cell_width + padding * 2
+    ui_height = len(grid) * cell_height + padding * 2
+    im = Image.new('RGB', (width, ui_height + footer_height), f'#{background:06x}')
     draw = ImageDraw.Draw(im)
     for row, line in enumerate(grid):
         for col, (text, highlight) in enumerate(line):
@@ -113,6 +125,18 @@ def capture(milliseconds):
     row, col = cursor
     x, y = padding + col * cell_width, padding + row * cell_height
     draw.rectangle((x, y, x + cell_width - 1, y + cell_height - 1), outline='#ffcf66', width=2)
+    # Presentation overlay describes the exact keys sent via nvim_input below.
+    # The Neovim grid above is rendered without cropping or other alterations.
+    draw.rectangle((0, ui_height, width, ui_height + footer_height), fill='#25282e')
+    draw.line((0, ui_height, width, ui_height), fill='#414750')
+    draw.text((padding, ui_height + 7), 'EXAMPLE MAPPINGS  ·  SPACE = <leader>', font=legend_font, fill='#9ca4af')
+    x, y = padding, ui_height + 32
+    for key in keycaps(keys):
+        size = int(draw.textlength(key, font=key_font)) + 20
+        draw.rounded_rectangle((x, y, x + size, y + 32), radius=4, fill='#343b45', outline='#626d7a')
+        draw.text((x + 10, y + 3), key, font=key_font, fill='#f1f3f5')
+        x += size + 7
+    draw.text((x + (9 if keys else 0), y + 3), label, font=key_font, fill='#e0e4e9')
     frames.append(im)
     durations.append(milliseconds)
     if args.stills:
@@ -126,17 +150,19 @@ def lua(code, *values):
 
 
 try:
-    rpc('nvim_ui_attach', 40, 18, {'rgb': True, 'ext_linegrid': True})
-    lua("markdo_demo = dofile('scripts/demo.lua'); markdo_demo.setup()")
+    lua("markdo_demo = dofile('scripts/demo.lua')")
+    width, height = lua('return {markdo_demo.width, markdo_demo.height}')
+    rpc('nvim_ui_attach', width, height, {'rgb': True, 'ext_linegrid': True})
+    lua('markdo_demo.setup()')
     capture(1100)
     for step in lua('return markdo_demo.steps'):
         lua('markdo_demo.prepare(...)', step['id'])
-        rpc('nvim_input', ':' + step['command'])
-        capture(600)
-        rpc('nvim_input', '\r')
+        keys = rpc('nvim_replace_termcodes', step['keys'], True, False, True)
+        if keys:
+            assert rpc('nvim_input', keys) == len(keys.encode()), 'Not all keys were accepted'
         pump(0.15)
         if step.get('message'):
-            capture(step['hold'])
+            capture(step['hold'], step['keys'], step['label'])
             if rpc('nvim_get_mode')['blocking']:
                 rpc('nvim_input', '\r')
                 pump()
@@ -147,20 +173,11 @@ try:
                 rpc('nvim_input', '\r')
                 pump()
             lua('markdo_demo.check(...)', step['id'])
-            capture(step['hold'])
+            capture(step['hold'], step['keys'], step['label'])
         if step['id'] == 'health':
             lua('markdo_demo.health_details()')
-            capture(1900)
-    # Execution is last: real terminal input, live output, retained exit status.
-    rpc('nvim_input', 'Neovim\r')
-    lua('markdo_demo.check_running_output()')
-    capture(700)
-    lua('markdo_demo.check_exit()')
-    capture(2300)
-    rpc('nvim_input', '\x1c\x0eq')
-    pump()
-    lua('markdo_demo.check_closed()')
-    capture(1200)
+            capture(1900, step['keys'], 'Clipboard and shell diagnostics')
+    lua('markdo_demo.verify()')
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     frames[0].save(output, save_all=True, append_images=frames[1:], duration=durations, loop=0, optimize=True)

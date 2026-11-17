@@ -31,8 +31,8 @@ Every user-facing feature should include a decision about the README demo:
   the PR. New commands excluded from the walkthrough need a specific reason in
   the scenario's `M.exceptions` table.
 
-Keep the recording legible at phone width and make shell execution the final
-chapter. Use real Neovim output. The recorder requires a working clipboard;
+Keep the recording legible at phone width and make shell execution and result
+capture the final chapter. Use real Neovim output. The recorder requires a working clipboard;
 only the headless tests use a fixture provider. If the walkthrough becomes too
 long, add a focused companion clip rather than speeding through unreadable
 frames. See [recording instructions](docs/demo.md).

@@ -21,6 +21,7 @@ eq(vim.fn.exists(':MarkDoDone'), 2)
 eq(vim.fn.exists(':MarkDoDoneNext'), 2)
 eq(vim.fn.exists(':MarkDoReset'), 2)
 eq(vim.fn.exists(':MarkDoFocusToggle'), 2)
+eq(vim.fn.exists(':MarkDoCapture'), 2)
 eq(vim.fn.exists(':MarkDoProgress'), 2)
 eq(vim.fn.exists(':MarkDoProgressToggle'), 2)
 eq(vim.fn.exists(':MarkDoNext'), 2); eq(vim.fn.exists(':MarkDoPrev'), 2)
@@ -133,6 +134,7 @@ vim.o.shell = '/nonexistent-markdo-shell'
 buffer({ '```shell', 'echo hello', '```' }); md.run(); assert(notices[#notices]:find('missing'))
 vim.o.shell = saved_shell
 -- Report the parser dependency instead of silently falling back.
+dofile('tests/capture.lua')(eq, buffer, notices)
 local get_parser = vim.treesitter.get_parser
 vim.treesitter.get_parser = function() error('parser unavailable') end
 md.done(); assert(notices[#notices]:find('TSInstall markdown'))

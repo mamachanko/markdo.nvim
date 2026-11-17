@@ -1,3 +1,4 @@
+:MarkDoCapture	markdo.txt	/*:MarkDoCapture*
 :MarkDoCopy	markdo.txt	/*:MarkDoCopy*
 :MarkDoDone	markdo.txt	/*:MarkDoDone*
 :MarkDoDoneNext	markdo.txt	/*:MarkDoDoneNext*
@@ -10,6 +11,7 @@
 :MarkDoRun	markdo.txt	/*:MarkDoRun*
 :MarkDoToggle	markdo.txt	/*:MarkDoToggle*
 markdo	markdo.txt	/*markdo*
+markdo-capture	markdo.txt	/*markdo-capture*
 markdo-commands	markdo.txt	/*markdo-commands*
 markdo-done-next	markdo.txt	/*markdo-done-next*
 markdo-fences	markdo.txt	/*markdo-fences*

@@ -94,7 +94,7 @@ local function fence_action(action)
     if not fence then message(err); return end
     local body, why = parse.body(data, fence)
     if not body then message(why); return end
-    action(body, fence.lang, cwd)
+    action(body, fence.lang, cwd, { data = data, fence = fence })
   end)
 end
 function M.copy()
@@ -107,12 +107,16 @@ end
 function M.run()
   local runner = require('markdo.runner')
   if runner.focus() then return end
-  fence_action(function(body, lang, cwd) runner.run(body, lang, cwd) end)
+  fence_action(function(body, lang, cwd, source) runner.run(body, lang, cwd, source) end)
+end
+function M.capture()
+  local ok, err = require('markdo.capture').insert(vim.api.nvim_get_current_buf())
+  message(ok and 'Output captured' or err)
 end
 function M.attach(buf)
   if vim.bo[buf].filetype ~= 'markdown' then return end
   for suffix, action in pairs({
-    Done = 'done', DoneNext = 'done_next', Toggle = 'toggle', Copy = 'copy', Run = 'run',
+    Done = 'done', DoneNext = 'done_next', Toggle = 'toggle', Copy = 'copy', Run = 'run', Capture = 'capture',
     Next = 'next', Prev = 'prev', Progress = 'show_progress',
     ProgressToggle = 'toggle_inline_progress', Reset = 'reset', FocusToggle = 'toggle_focus',
   }) do

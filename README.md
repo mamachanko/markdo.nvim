@@ -1,15 +1,15 @@
 # ☑️ Mark Do
 
-Work through Markdown runbooks in Neovim: check nested tasks, copy code, and run shell fences in a floating terminal.
+Work through Markdown runbooks in Neovim: check nested tasks, copy code, run shell fences in a floating terminal, and save their results.
 
 [![CI](https://github.com/mamachanko/markdo.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/mamachanko/markdo.nvim/actions/workflows/ci.yml)
 [![GitHub release](https://img.shields.io/github/v/release/mamachanko/markdo.nvim)](https://github.com/mamachanko/markdo.nvim/releases)
 
 [Installation](#installation) · [Quick start](#quick-start) · [Commands](#commands) · [Behavior](#behavior) · [Help & development](#help-and-development)
 
-![Neovim walkthrough: check health, navigate and complete tasks, inspect progress, reset, copy, then run an interactive shell fence](docs/demo.gif)
+![Neovim walkthrough using visible leader-key chords: complete tasks, inspect progress, focus, reset, copy, then run and capture a shell fence](docs/demo.gif)
 
-*Check dependencies, work through tasks and progress, reset the checklist, then copy and run its shell fence.*
+*Work through a runbook with visible key chords, then run its shell fence and capture the result. Space is the demo’s example leader; all mappings are optional.*
 
 [Demo chapters and recording instructions](docs/demo.md) · Uses the optional statusline example below.
 
@@ -87,6 +87,7 @@ vim.api.nvim_create_autocmd('FileType', {
       ['<leader>xf'] = 'FocusToggle',
       ['<leader>xc'] = 'Copy',
       ['<leader>xe'] = 'Run',
+      ['<leader>xo'] = 'Capture',
       ['<leader>xn'] = 'Next',
       ['<leader>xp'] = 'Prev',
       ['<leader>xs'] = 'Progress',
@@ -95,6 +96,11 @@ vim.api.nvim_create_autocmd('FileType', {
     }) do
       vim.keymap.set('n', key, '<Plug>(MarkDo' .. action .. ')',
         { buffer = ev.buf, desc = 'Mark Do ' .. action })
+    end
+    -- Optional shortcuts for the other reset scopes.
+    for key, scope in pairs({ ['<leader>x1'] = 'section', ['<leader>x2'] = 'buffer' }) do
+      vim.keymap.set('n', key, function() vim.cmd('MarkDoReset ' .. scope) end,
+        { buffer = ev.buf, desc = 'Mark Do reset ' .. scope })
     end
   end,
 })
@@ -135,6 +141,7 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
 4. **Focus.** Use `:MarkDoFocusToggle` to fold completed branches. Toggle it again to restore your previous folds and view before continuing.
 5. **Reset.** Put the cursor on the parent (line 3) and use `:MarkDoReset` to reopen it and both children in one undo step. Section and whole-buffer scopes are also available below.
 6. **Execute.** Return to **Run the greeting** (line 4) and use `:MarkDoRun`. The float prints `Hello, Neovim!`, pauses one second, and shows `exit 0`. Press `Ctrl-\`, then `Ctrl-N` to leave terminal mode, then **q** to close the completed float. Running the script leaves the checklist open.
+7. **Capture.** Back in the runbook, use `:MarkDoCapture` (optional `<leader>xo`) to insert the output and exit status beneath the shell fence. One undo removes the capture.
 
 ## Commands
 
@@ -147,6 +154,7 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
 | `:MarkDoFocusToggle` | `<leader>xf` | Fold completed branches in the current window |
 | `:MarkDoCopy` | `<leader>xc` | Copy the selected fence body to the `+` register |
 | `:MarkDoRun` | `<leader>xe` | Run the selected shell fence in a float |
+| `:MarkDoCapture` | `<leader>xo` | Insert the latest run’s output and exit status beneath its source fence |
 | `:MarkDoNext` | `<leader>xn` | Jump to the next unfinished task |
 | `:MarkDoPrev` | `<leader>xp` | Jump to the previous unfinished task |
 | `:MarkDoProgress` | `<leader>xs` | Show completion for the current buffer |
@@ -168,6 +176,7 @@ Use these normal-mode mappings in your own key configuration:
 | `<Plug>(MarkDoFocusToggle)` | `:MarkDoFocusToggle` |
 | `<Plug>(MarkDoCopy)` | `:MarkDoCopy` |
 | `<Plug>(MarkDoRun)` | `:MarkDoRun` |
+| `<Plug>(MarkDoCapture)` | `:MarkDoCapture` |
 | `<Plug>(MarkDoNext)` | `:MarkDoNext` |
 | `<Plug>(MarkDoPrev)` | `:MarkDoPrev` |
 | `<Plug>(MarkDoProgress)` | `:MarkDoProgress` |
@@ -311,6 +320,25 @@ The float opens in terminal mode for live input. One job may be active per Neovi
 | **q** in Normal mode | Close the float after exit |
 
 Closing the float another way stops an active job and cleans up its buffer. Background job management is deferred.
+
+### Capturing results
+
+After a run exits, return to its Markdown buffer and use **`:MarkDoCapture`** (optional `<leader>xo`). The latest run for that buffer is inserted beneath its source shell fence as a `text` fence, with the exit status first:
+
+<!-- example:captured -->
+````markdown
+    ```text
+    exit 0
+
+    Hello, Neovim!
+    ```
+````
+
+Capture is explicit and works after you close the terminal. It reads the combined stdout/stderr received through the terminal, including echoed input. Terminal colours and control sequences are removed; carriage returns and backspaces overwrite the current line. Blank lines, text indentation, and lines wider than the float are retained. This is a plain transcript for shell scripts, rather than a replay of full-screen applications. It excludes terminal padding and Neovim’s process-exit message.
+
+The inserted block preserves Markdown list and blockquote nesting. Its delimiter grows if the output contains backticks. Capture keeps all checkboxes as they are, preserves your cursor’s position in the text, and makes one undo step. Repeating Capture does nothing while that capture remains; undoing or deleting it allows capturing again. A new run starts a new result and leaves earlier captures intact. To rerun directly, put the cursor inside the shell fence; from a task containing several fences, the usual picker applies.
+
+Only the latest run per loaded source buffer is retained, until the next run or buffer unload. Capture tracks the source fence through unrelated edits. If the fence changes, disappears, or no longer parses in that location, it asks you to run it again. An active run, unmodifiable buffer, or unavailable parser reports a short message. Output over **1 MiB** is refused, without inserting a partial result. The buffer is never saved automatically.
 
 ## Help and development
 
