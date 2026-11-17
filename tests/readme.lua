@@ -32,7 +32,7 @@ assert(vim.fn.maparg('<leader>xd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'DoneNext', xr = 'Reset', xf = 'FocusToggle', xc = 'Copy', xe = 'Run', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
+for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'DoneNext', xr = 'Reset', xf = 'FocusToggle', xc = 'Copy', xe = 'Run', xo = 'Capture', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
   local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
   assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
@@ -91,10 +91,10 @@ assert(vim.deep_equal(api.nvim_win_get_cursor(0), focus_cursor))
 at(3); key('r')
 assert(content() == runbook and api.nvim_win_get_cursor(0)[1] == 3)
 vim.cmd.undo(); assert(require('markdo').progress().percent == 100)
-vim.cmd('MarkDoReset section'); assert(content() == runbook)
-vim.cmd.undo(); vim.cmd('MarkDoReset buffer'); assert(content() == runbook)
+key('1'); assert(content() == runbook)
+vim.cmd.undo(); key('2'); assert(content() == runbook)
 key('v'); assert(inline_text() == nil)
--- Execute last. Script exit never changes the reset checklist.
+-- End with execution and capture. Neither changes checklist states.
 at(4)
 local source = api.nvim_get_current_buf()
 key('e')
@@ -106,9 +106,14 @@ assert(table.concat(api.nvim_buf_get_lines(source, 0, -1, false), '\n') == runbo
 vim.cmd.stopinsert()
 for _, mapping in ipairs(api.nvim_buf_get_keymap(term, 'n')) do if mapping.lhs == 'q' then mapping.callback() end end
 assert(not api.nvim_win_is_valid(win))
+key('o')
+local capture_example = example('captured', 'markdown', '````')
+assert(content():find(capture_example, 1, true))
+assert(require('markdo').progress().percent == 0)
+vim.cmd.undo(); assert(content() == runbook)
 vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
 assert(_G.markdo_progress() == '')
 vim.bo.filetype = 'text'; assert(_G.markdo_progress() == '')
 vim.fn.delete(temp, 'rf')
-print('README install, keymaps, completion, progress, reset, Copy and final Run examples passed')
+print('README installation, mappings and all quick-start examples passed, ending with Run and Capture')
 vim.cmd.qa({ bang = true })

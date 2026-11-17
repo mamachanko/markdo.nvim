@@ -8,30 +8,41 @@ printf 'Hello, %s!\n' "$name"
 sleep 1]]
 -- New commands must be covered below or have an explicit reviewed exception.
 M.exceptions = {}
+-- Space is this recording's example leader, not a plugin default.
+M.width, M.height = 56, 24
 M.steps = {
-  { id = 'health', command = 'checkhealth markdo', hold = 1500 },
-  { id = 'next', command = 'MarkDoNext', hold = 1100 },
-  { id = 'prev', command = 'MarkDoPrev', hold = 1100 },
-  { id = 'done_next', command = 'MarkDoDoneNext', hold = 1400 },
-  { id = 'inline', command = 'MarkDoProgressToggle', hold = 1500 },
-  { id = 'progress', command = 'MarkDoProgress', hold = 1600 },
-  { id = 'done', command = 'MarkDoDone', hold = 1500 },
-  { id = 'focus_on', command = 'MarkDoFocusToggle', hold = 1500 },
-  { id = 'focus_off', command = 'MarkDoFocusToggle', hold = 1500 },
-  { id = 'toggle', command = 'MarkDoToggle', hold = 1400 },
-  { id = 'reset_task', command = 'MarkDoReset', hold = 1300 },
-  { id = 'undo_task', command = 'undo', hold = 800 },
-  { id = 'reset_section', command = 'MarkDoReset section', hold = 1300 },
-  { id = 'undo_section', command = 'undo', hold = 800 },
-  { id = 'reset_buffer', command = 'MarkDoReset buffer', hold = 1500 },
-  { id = 'copy', command = 'MarkDoCopy', hold = 800 },
-  { id = 'clipboard', command = "echo getreg('+')", hold = 1800, message = true },
-  { id = 'run', command = 'MarkDoRun', hold = 1500 },
+  { id = 'health', command = 'checkhealth markdo', keys = ' xh', label = 'Check dependencies', hold = 1500 },
+  { id = 'next', command = 'MarkDoNext', keys = ' xn', label = 'Next unfinished task', hold = 1100 },
+  { id = 'prev', command = 'MarkDoPrev', keys = ' xp', label = 'Previous unfinished task', hold = 1100 },
+  { id = 'done_next', command = 'MarkDoDoneNext', keys = ' xj', label = 'Complete and continue', hold = 1400 },
+  { id = 'inline', command = 'MarkDoProgressToggle', keys = ' xv', label = 'Show parent progress', hold = 1500 },
+  { id = 'progress', command = 'MarkDoProgress', keys = ' xs', label = 'Checklist progress', hold = 1600 },
+  { id = 'done', command = 'MarkDoDone', keys = ' xd', label = 'Complete the last child', hold = 1500 },
+  { id = 'focus_on', command = 'MarkDoFocusToggle', keys = ' xf', label = 'Focus on unfinished work', hold = 1500 },
+  { id = 'focus_off', command = 'MarkDoFocusToggle', keys = ' xf', label = 'Restore the previous view', hold = 1200 },
+  { id = 'toggle', command = 'MarkDoToggle', keys = ' xx', label = 'Reopen a task', hold = 1400 },
+  { id = 'reset_task', command = 'MarkDoReset', keys = ' xr', label = 'Reset this task', hold = 1300 },
+  { id = 'undo_task', keys = 'u', label = 'Undo', hold = 800 },
+  { id = 'reset_section', command = 'MarkDoReset section', keys = ' x1', label = 'Reset this section', hold = 1300 },
+  { id = 'undo_section', keys = 'u', label = 'Undo', hold = 800 },
+  { id = 'reset_buffer', command = 'MarkDoReset buffer', keys = ' x2', label = 'Reset this runbook', hold = 1500 },
+  { id = 'copy', command = 'MarkDoCopy', keys = ' xc', label = 'Copy the shell fence', hold = 800 },
+  { id = 'clipboard', keys = ' xi', label = 'Inspect the clipboard', hold = 1800, message = true },
+  { id = 'run', command = 'MarkDoRun', keys = ' xe', label = 'Run the shell fence', hold = 1500 },
+  { id = 'input', keys = 'Neovim<CR>', label = 'Answer the script', hold = 700 },
+  { id = 'exit', keys = '', label = 'Finished · exit 0', hold = 1800 },
+  { id = 'normal', keys = '<C-\\><C-n>', label = 'Leave terminal mode', hold = 600 },
+  { id = 'close', keys = 'q', label = 'Close the completed terminal', hold = 600 },
+  { id = 'capture', command = 'MarkDoCapture', keys = ' xo', label = 'Save the run in the runbook', hold = 2800 },
 }
 
 function M.setup(opts)
   opts = opts or {}
   vim.opt.rtp:prepend(vim.fn.getcwd())
+  vim.g.mapleader = ' '
+  local readme = table.concat(vim.fn.readfile('README.md'), '\n')
+  local snippet = assert(readme:match('<!%-%- example:keymaps %-%->\n```lua\n(.-)\n```'))
+  assert(loadstring(snippet))()
   vim.opt.termguicolors = true
   vim.opt.swapfile = false
   vim.opt.laststatus = 2
@@ -62,6 +73,9 @@ function M.setup(opts)
     return p and p.percent and ('%d/%d (%d%%)'):format(p.completed, p.total, p.percent) or ''
   end
   vim.opt.statusline = ' %t %= %{v:lua.markdo_demo_progress()} '
+  -- Recording-only inspection keys; all Mark Do actions use the README maps.
+  vim.keymap.set('n', '<leader>xh', function() vim.cmd('checkhealth markdo') end, { buffer = state.buf })
+  vim.keymap.set('n', '<leader>xi', function() vim.api.nvim_echo({ { vim.fn.getreg('+') } }, false, {}) end, { buffer = state.buf })
   state.executed = {}
 end
 local function lines() return api.nvim_buf_get_lines(state.buf, 0, -1, false) end
@@ -77,6 +91,13 @@ local function inline(text)
     return #marks == 1 and marks[1][4].virt_text[1][1] == text
   end, 5), text)
 end
+function M.press(step)
+  -- Headless :feedkeys exits terminal-input mode when typeahead drains.
+  -- The UI recorder sends these keys normally; its headless replay feeds the
+  -- same text to the PTY directly. Every plugin action uses its real mapping.
+  if step.id == 'input' then api.nvim_chan_send(vim.bo[state.term].channel, 'Neovim\n'); return end
+  api.nvim_feedkeys(api.nvim_replace_termcodes(step.keys, true, false, true), 'xt', false)
+end
 function M.prepare(id)
   if id == 'next' then
     local health_win = api.nvim_get_current_win()
@@ -89,6 +110,8 @@ function M.prepare(id)
     at(3)
   elseif id == 'reset_section' then
     at(1)
+  elseif id == 'exit' then
+    M.check_exit()
   end
 end
 function M.check(id)
@@ -140,8 +163,18 @@ function M.check(id)
       return table.concat(api.nvim_buf_get_lines(state.term, 0, -1, false), '\n'):find('Your name:', 1, true)
     end, 10))
     progress(0, 3)
+  elseif id == 'input' then M.check_running_output()
+  elseif id == 'exit' then M.check_exit()
+  elseif id == 'normal' then assert(api.nvim_get_current_buf() == state.term)
+  elseif id == 'close' then M.check_closed()
+  elseif id == 'capture' then
+    local data = assert(require('markdo.parse').read(state.buf))
+    assert(#data.fences == 2 and data.fences[2].lang == 'text')
+    assert(require('markdo.parse').body(data, data.fences[2]) == 'exit 0\n\nYour name: Neovim\nHello, Neovim!')
+    assert(data.fences[2].owner == data.tasks[2])
+    progress(0, 3)
   else error('Unknown demo step: ' .. id) end
-  if id ~= 'health' then
+  if id ~= 'health' and id ~= 'capture' then
     for _, row in ipairs({ 3, 4, 11, 14 }) do
       local col = assert(state.original[row]:find('%[[ xX]%]'))
       text[row] = text[row]:sub(1, col) .. state.original[row]:sub(col + 1, col + 1) .. text[row]:sub(col + 2)
@@ -156,9 +189,6 @@ function M.health_details()
     end
   end
 end
-function M.send_input()
-  api.nvim_chan_send(vim.bo[state.term].channel, 'Neovim\n')
-end
 function M.check_running_output()
   assert(vim.wait(1000, function()
     return table.concat(api.nvim_buf_get_lines(state.term, 0, -1, false), '\n'):find('Hello, Neovim!', 1, true)
@@ -170,22 +200,19 @@ function M.check_exit()
   assert(api.nvim_win_get_config(state.float).title[1][1]:find('exit 0', 1, true))
   progress(0, 3)
 end
-function M.close_terminal()
-  vim.cmd.stopinsert()
-  for _, key in ipairs(api.nvim_buf_get_keymap(state.term, 'n')) do
-    if key.lhs == 'q' then key.callback(); return end
-  end
-end
 function M.check_closed()
   assert(not api.nvim_win_is_valid(state.float))
   assert(api.nvim_get_current_buf() == state.buf)
   progress(0, 3)
   for _, row in ipairs({ 3, 4, 11, 14 }) do assert(lines()[row]:find('[ ]', 1, true)) end
   assert(vim.deep_equal(vim.fn.readfile('examples/demo.md'), state.original), 'Demo must not save checklist edits')
+end
+function M.verify()
+  assert(vim.deep_equal(vim.fn.readfile('examples/demo.md'), state.original))
   local covered = {}
   for _, step in ipairs(M.steps) do
     assert(state.executed[step.id], 'Demo skipped ' .. step.id)
-    local name = step.command:match('^(MarkDo[%w_]+)')
+    local name = step.command and step.command:match('^(MarkDo[%w_]+)')
     if name then covered[name] = true end
   end
   for name in pairs(api.nvim_buf_get_commands(state.buf, {})) do
@@ -194,7 +221,12 @@ function M.check_closed()
         'Add ' .. name .. ' to the demo, or document why it is excluded in scripts/demo.lua')
     end
   end
-  assert(M.steps[#M.steps].command == 'MarkDoRun', 'Execution must be the final demo chapter')
+  assert(M.steps[#M.steps].command == 'MarkDoCapture', 'End the execution chapter with Capture')
+  local ran = false
+  for _, step in ipairs(M.steps) do
+    if step.command == 'MarkDoRun' then ran = true
+    elseif ran and step.command then assert(step.command == 'MarkDoCapture', 'Execution must be the final chapter') end
+  end
 end
 function M.finish()
   if state.clipboard then

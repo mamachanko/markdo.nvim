@@ -49,6 +49,8 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
     are untouched. Any language, including an unlabelled fence, can be copied.
 :MarkDoRun                                                      *:MarkDoRun*
     Explicitly run the selected shell fence in a floating terminal.
+:MarkDoCapture                                                  *:MarkDoCapture*
+    Insert the latest run’s output below its source fence. See |markdo-capture|.
 :MarkDoNext                                                     *:MarkDoNext*
     Jump to the next unchecked task after the cursor's line.
 :MarkDoPrev                                                     *:MarkDoPrev*
@@ -65,6 +67,7 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 <Plug>(MarkDoToggle)
 <Plug>(MarkDoCopy)
 <Plug>(MarkDoRun)
+<Plug>(MarkDoCapture)
 <Plug>(MarkDoNext)
 <Plug>(MarkDoPrev)
 <Plug>(MarkDoProgress)
@@ -252,6 +255,36 @@ Closing the float another way stops an active job and cleans up the buffer.
 Output stays after exit, with status in the float title and b:markdo_exit_code.
 Exit status never changes task state. Runs occur only through explicit Run.
 Background job management is deferred.
+
+CAPTURING RESULTS                                              *markdo-capture*
+
+After exit, return to the originating Markdown buffer and use MarkDoCapture.
+The latest run for that buffer is inserted below its source shell fence as a
+text fence: exit status, a blank line, then output. Silent runs contain only
+the exit status. Works after closing the float. No setup/default key; the
+README example uses <leader>xo.
+
+Capture the combined stdout/stderr received through the PTY, including echoed
+terminal input. Strip ANSI colours and OSC/control sequences. CR and backspace
+overwrite the current line; tabs expand to spaces. Preserve blank lines,
+relative indentation and long lines independently of window width/scrollback.
+Exclude terminal grid padding and Neovim's process-exit message. This is a
+line-oriented transcript for shell scripts, not a full-screen terminal replay.
+
+Preserve Markdown list/blockquote prefixes, using enough backticks to keep
+output inside the text fence. Keep all checklist states and the cursor's text
+position. One undo removes the insertion. Repeated capture is a no-op while
+the inserted block remains; undo/delete allows another capture. New runs leave
+old captures intact and replace the pending result for that buffer.
+
+Results are in memory, per source buffer, until the next successfully started
+run or buffer unload/wipeout. Unrelated edits can move the source fence. Edits
+to the fence, deletion, or a changed Markdown context refuse insertion and ask
+you to run it again. A different buffer cannot capture that run's results.
+No run, active run, output still arriving, unmodifiable buffer and parser errors
+report short messages without edits. More than 1 MiB of received output refuses
+capture rather than silently truncating. Stopped runs can capture the output
+received before stopping. Capture never reruns a script or saves the file.
 
 TESTING                                                        *markdo-testing*
 

@@ -8,7 +8,7 @@ function M.focus()
   end
   return true
 end
-function M.run(body, lang, cwd)
+function M.run(body, lang, cwd, source)
   if M.focus() then return end
   local args
   if lang == 'shell' then
@@ -27,7 +27,9 @@ function M.run(body, lang, cwd)
   vim.bo[buf].bufhidden = 'hide'
   local state = { buf = buf, win = win }
   active = state
-  local function stop() if state.job and not state.exited then vim.fn.jobstop(state.job) end end
+  local function stop()
+    if state.job and not state.exited then state.stopped = true; vim.fn.jobstop(state.job) end
+  end
   vim.keymap.set('n', 'x', stop, { buffer = buf, desc = 'Stop Mark Do job' })
   vim.keymap.set('n', 'q', function()
     if state.exited and vim.api.nvim_win_is_valid(win) then vim.api.nvim_win_close(win, true) end
@@ -40,21 +42,36 @@ function M.run(body, lang, cwd)
       pcall(vim.api.nvim_del_augroup_by_id, group)
     end)
   end })
-  state.job = vim.fn.jobstart(args, { term = true, cwd = cwd, on_exit = function(_, code)
-    state.exited = true
-    if active == state then active = nil end
+  local capture = require('markdo.capture')
+  local result
+  local function show_exit()
+    if not state.exited or not state.eof or state.published then return end
+    state.published = true
     vim.schedule(function()
       if vim.api.nvim_win_is_valid(win) then
-        vim.api.nvim_win_set_config(win, { title = (' Mark Do · exit %d '):format(code) })
+        vim.api.nvim_win_set_config(win, { title = (' Mark Do · exit %d '):format(state.code) })
       end
-      if vim.api.nvim_buf_is_valid(buf) then
-        vim.b[buf].markdo_exit_code = code
-      end
+      if vim.api.nvim_buf_is_valid(buf) then vim.b[buf].markdo_exit_code = state.code end
     end)
-  end })
+  end
+  state.job = vim.fn.jobstart(args, { term = true, cwd = cwd,
+    on_stdout = function(_, data)
+      capture.append(result, data)
+      if #data == 1 and data[1] == '' then state.eof = true; show_exit() end
+    end,
+    on_exit = function(_, code)
+      capture.finish(result, code, state.stopped)
+      state.exited, state.code = true, code
+      -- jobstop closes the PTY without the usual stdout EOF callback.
+      state.eof = state.eof or state.stopped
+      if active == state then active = nil end
+      show_exit()
+    end,
+  })
   if state.job <= 0 then
     active = nil; state.exited = true; message('Could not start shell'); vim.api.nvim_win_close(win, true); return
   end
+  result = source and capture.start(source.data, source.fence)
   vim.cmd.startinsert()
 end
 return M
