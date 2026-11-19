@@ -57,13 +57,16 @@ local function recover_details(lines, tree)
   if not root:has_error() then return end
   local original_fences, code, original_markers, items = fence_ranges(root)
   local normalized, changed, wrappers = {}, false, {}
-  local function blank(row) return not lines[row] or lines[row]:match('^[ \t>]*$') end
-  local function prelude(row)
+  local function blank(row, quotes)
+    return not lines[row] or lines[row]:match('^[ \t]*$')
+      or (quotes ~= '' and lines[row]:gsub('[ \t]', '') == quotes)
+  end
+  local function prelude(row, quotes)
     -- HTML blocks end at a blank line. Do not promote text that is still HTML
     -- into Markdown tasks/fences by removing its opening tags.
-    if blank(row + 1) then return true end
+    if blank(row + 1, quotes) then return true end
     local next_tag = lines[row + 1]:match('^[ \t>]*(<.*)$')
-    return next_tag and summary(next_tag:lower()) and blank(row + 2)
+    return next_tag and summary(next_tag:lower()) and blank(row + 2, quotes)
   end
   for i, line in ipairs(lines) do
     local prefix, tag = line:match('^([ \t>]*)(<.*)$')
@@ -74,7 +77,7 @@ local function recover_details(lines, tree)
       if lower:match('^<details>%s*$') or lower:match('^<details%s+[^<>]*>%s*$') then
         -- Only list-contained wrappers need this workaround. In particular,
         -- do not turn dedented HTML into lazy continuation of a previous task.
-        if prelude(i) then
+        if prelude(i, quotes) then
           for _, item in ipairs(items) do
             if contains(item.node, i - 1) and width >= columns(lines[item.row + 1]:sub(1, item.col)) then
               wrapper = true; break
@@ -87,9 +90,9 @@ local function recover_details(lines, tree)
       elseif lower:match('^</details>%s*$') then
         local parent = wrappers[#wrappers]
         if parent and quotes == parent.quotes and width == parent.width then
-          wrapper = blank(i + 1); table.remove(wrappers)
+          wrapper = blank(i + 1, quotes); table.remove(wrappers)
         end
-      elseif summary(lower) and blank(i + 1) then
+      elseif summary(lower) and blank(i + 1, quotes) then
         local parent = wrappers[#wrappers]
         wrapper = parent and quotes == parent.quotes and width >= parent.width
       end
