@@ -1,6 +1,12 @@
 local M = {}
 local parse = require('markdo.parse')
+function M.setup(opts) require('markdo.config').setup(opts) end
 local function message(text) vim.notify('Mark Do: ' .. text, vim.log.levels.INFO) end
+local function copy_body(body)
+  if vim.fn.has('clipboard') ~= 1 then message('No clipboard provider; configure g:clipboard or install a clipboard tool'); return end
+  local ok, result = pcall(vim.fn.setreg, '+', body, 'v')
+  if not ok or result ~= 0 then message('Clipboard failed: ' .. tostring(result)) end
+end
 local function read()
   local data, err = parse.read(vim.api.nvim_get_current_buf())
   if not data then message(err) end
@@ -48,24 +54,48 @@ function M.reset(scope)
   if #changes == 0 then message('Tasks already open'); return end
   apply_changes(data.buf, changes)
 end
-local function navigate(direction)
+local function navigate(direction, legacy)
   local data = read(); if not data then return end
+  local options = require('markdo.config').navigation()
+  local parents = {}
+  if not legacy and options.leaf_only then
+    for _, task in ipairs(data.tasks) do if task.parent then parents[task.parent] = true end end
+  end
   local row = vim.api.nvim_win_get_cursor(0)[1] - 1
+  local tick = vim.api.nvim_buf_get_changedtick(data.buf)
   local first, last = 1, #data.tasks
   if direction < 0 then first, last = last, first end
   for i = first, last, direction do
     local task = data.tasks[i]
-    if not task.checked and (task.row - row) * direction > 0 then
+    if not task.checked and not parents[task] and (task.row - row) * direction > 0 then
       vim.cmd("normal! m'")
       vim.api.nvim_win_set_cursor(0, { task.row + 1, task.col })
       vim.cmd('normal! zv')
+      if not legacy and options.copy_on_jump and vim.api.nvim_get_current_buf() == data.buf
+        and vim.api.nvim_buf_get_changedtick(data.buf) == tick then
+        -- Only one fence directly owned by the destination task is unambiguous.
+        -- Never open a picker or borrow another task's fence during a motion.
+        local chosen
+        for _, fence in ipairs(data.fences) do
+          if fence.owner == task then
+            if chosen then return end
+            chosen = fence
+          end
+        end
+        if chosen then
+          local body = parse.body(data, chosen)
+          if body then copy_body(body) end
+        end
+      end
       return
     end
   end
   message(direction > 0 and 'No next unfinished task' or 'No previous unfinished task')
 end
 function M.done_next()
-  if change(false) then navigate(1) end
+  -- Retain the original combined action for existing configurations. New
+  -- navigation preferences and clipboard side effects apply only to Next/Prev.
+  if change(false) then navigate(1, true) end
 end
 function M.next() navigate(1) end
 function M.prev() navigate(-1) end
@@ -98,11 +128,7 @@ local function fence_action(action)
   end)
 end
 function M.copy()
-  fence_action(function(body)
-    if vim.fn.has('clipboard') ~= 1 then message('No clipboard provider; configure g:clipboard or install a clipboard tool'); return end
-    local ok, err = pcall(vim.fn.setreg, '+', body, 'v')
-    if not ok then message('Clipboard failed: ' .. tostring(err)) end
-  end)
+  fence_action(copy_body)
 end
 function M.run()
   local runner = require('markdo.runner')

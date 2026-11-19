@@ -7,14 +7,19 @@ read name
 printf 'Hello, %s!\n' "$name"
 sleep 1]]
 -- New commands must be covered below or have an explicit reviewed exception.
-M.exceptions = {}
+M.exceptions = {
+  MarkDoDoneNext = 'Compatibility command combines completion and movement; the recommended workflow uses Done and independent Next/Prev.',
+}
 -- Space is this recording's example leader, not a plugin default.
 M.width, M.height = 56, 24
 M.steps = {
   { id = 'health', command = 'checkhealth markdo', keys = ' xh', label = 'Check dependencies', hold = 1500 },
-  { id = 'next', command = 'MarkDoNext', keys = ' xn', label = 'Next unfinished task', hold = 1100 },
-  { id = 'prev', command = 'MarkDoPrev', keys = ' xp', label = 'Previous unfinished task', hold = 1100 },
-  { id = 'done_next', command = 'MarkDoDoneNext', keys = ' xj', label = 'Complete and continue', hold = 1400 },
+  { id = 'next', command = 'MarkDoNext', keys = ' xj', label = 'Next leaf · opt-in copy', hold = 1400 },
+  { id = 'auto_clipboard', keys = ' xi', label = 'Inspect automatically copied code', hold = 1400, message = true },
+  { id = 'next_again', command = 'MarkDoNext', keys = ' xj', label = 'Next unfinished leaf', hold = 1100 },
+  { id = 'prev', command = 'MarkDoPrev', keys = ' xk', label = 'Previous unfinished leaf', hold = 1100 },
+  { id = 'done_first', command = 'MarkDoDone', keys = ' xd', label = 'Mark done · stay here', hold = 1300 },
+  { id = 'next_after_done', command = 'MarkDoNext', keys = ' xj', label = 'Move independently', hold = 1100 },
   { id = 'inline', command = 'MarkDoProgressToggle', keys = ' xv', label = 'Show parent progress', hold = 1500 },
   { id = 'progress', command = 'MarkDoProgress', keys = ' xs', label = 'Checklist progress', hold = 1600 },
   { id = 'done', command = 'MarkDoDone', keys = ' xd', label = 'Complete the last child', hold = 1500 },
@@ -62,10 +67,13 @@ function M.setup(opts)
   vim.cmd('edit examples/demo.md')
   vim.bo.filetype = 'markdown'
   vim.cmd('runtime plugin/markdo.lua')
+  -- Explicitly opt into the README example. Runtime defaults leave + alone.
+  local navigation = assert(readme:match('<!%-%- example:navigation %-%->\n```lua\n(.-)\n```'))
+  assert(loadstring(navigation))()
   state.buf, state.win = api.nvim_get_current_buf(), api.nvim_get_current_win()
   state.original = vim.fn.readfile('examples/demo.md')
   assert(#state.original == 14, 'Update demo row assertions when changing its fixture')
-  api.nvim_win_set_cursor(0, { 3, 2 })
+  api.nvim_win_set_cursor(0, { 1, 0 })
   -- Optional README statusline integration, configured before the walkthrough.
   _G.markdo_demo_progress = function()
     if vim.bo.filetype ~= 'markdown' then return '' end
@@ -103,8 +111,8 @@ function M.prepare(id)
     local health_win = api.nvim_get_current_win()
     api.nvim_set_current_win(state.win)
     if health_win ~= state.win then api.nvim_win_close(health_win, true) end
-    at(3)
-  elseif id == 'done_next' or id == 'copy' or id == 'run' then
+    at(1)
+  elseif id == 'copy' or id == 'run' then
     at(4)
   elseif id == 'reset_task' then
     at(3)
@@ -123,10 +131,15 @@ function M.check(id)
     assert(report:find('recognizes tasks and fenced blocks', 1, true), report)
     assert(report:find('Clipboard provider available', 1, true), report)
     state.health_win = api.nvim_get_current_win()
-  elseif id == 'next' then assert(api.nvim_win_get_cursor(0)[1] == 4)
-  elseif id == 'prev' then assert(api.nvim_win_get_cursor(0)[1] == 3)
-  elseif id == 'done_next' then
+  elseif id == 'next' or id == 'prev' then
+    assert(api.nvim_win_get_cursor(0)[1] == 4, 'Navigation must skip the parent category')
+    assert(text[3] == '- [ ] Ready for the day' and text[4] == '  - [ ] Run the greeting')
+    assert(vim.fn.getreg('+') == body and vim.fn.getregtype('+') == 'v')
+  elseif id == 'next_again' or id == 'next_after_done' then
     assert(api.nvim_win_get_cursor(0)[1] == 11)
+    assert(vim.fn.getreg('+') == body, 'No-fence navigation must preserve the clipboard')
+  elseif id == 'done_first' then
+    assert(api.nvim_win_get_cursor(0)[1] == 4, 'Done must stay on the task')
     assert(text[4] == '  - [x] Run the greeting' and text[3] == '- [ ] Ready for the day')
     progress(2, 3)
   elseif id == 'inline' or id == 'progress' then
@@ -153,7 +166,7 @@ function M.check(id)
   elseif id == 'reset_buffer' then
     assert(text[14] == '- [ ] File last run')
     inline('  0/2 · 0%'); progress(0, 3)
-  elseif id == 'copy' or id == 'clipboard' then
+  elseif id == 'copy' or id == 'clipboard' or id == 'auto_clipboard' then
     assert(vim.fn.getreg('+') == body, vim.inspect(vim.fn.getreg('+')))
     assert(vim.fn.getregtype('+') == 'v')
   elseif id == 'run' then
@@ -229,6 +242,7 @@ function M.verify()
   end
 end
 function M.finish()
+  require('markdo').setup()
   if state.clipboard then
     assert(vim.fn.setreg('+', state.clipboard.value, state.clipboard.kind) == 0, 'Could not restore clipboard')
     state.clipboard = nil

@@ -11,11 +11,11 @@ Work through Markdown runbooks in Neovim: check nested tasks, copy code, run she
 
 *Work through a runbook with visible key chords, then run its shell fence and capture the result. Space is the demo’s example leader; all mappings are optional.*
 
-[Demo chapters and recording instructions](docs/demo.md) · Uses the optional statusline example below.
+[Demo chapters and recording instructions](docs/demo.md) · Uses the optional statusline and copy-on-navigation examples below.
 
 Keep your runbooks as ordinary Markdown, with the checklist and its commands together:
 
-- **Nested tasks** — move between unfinished tasks and complete them from text or code; parent checkboxes reflect progress below them.
+- **Nested tasks** — move between unfinished leaf tasks and complete them from text or code; parent checkboxes reflect progress below them.
 - **Code in context** — copy a fence body or run a shell script directly from the task it belongs to.
 - **Interactive execution** — inspect live output, enter terminal input, and keep the result visible after exit.
 
@@ -82,14 +82,15 @@ vim.api.nvim_create_autocmd('FileType', {
     for key, action in pairs({
       ['<leader>xx'] = 'Toggle',
       ['<leader>xd'] = 'Done',
-      ['<leader>xj'] = 'DoneNext',
+      ['<leader>xj'] = 'Next',
+      ['<leader>xk'] = 'Prev',
       ['<leader>xr'] = 'Reset',
       ['<leader>xf'] = 'FocusToggle',
       ['<leader>xc'] = 'Copy',
       ['<leader>xe'] = 'Run',
       ['<leader>xo'] = 'Capture',
-      ['<leader>xn'] = 'Next',
-      ['<leader>xp'] = 'Prev',
+      ['<leader>xn'] = 'Next', -- Optional alias for xj.
+      ['<leader>xp'] = 'Prev', -- Optional alias for xk.
       ['<leader>xs'] = 'Progress',
       ['<leader>xv'] = 'ProgressToggle',
       -- ['<leader>x<Space>'] = 'Run', -- Alternative to <leader>xe.
@@ -107,6 +108,26 @@ vim.api.nvim_create_autocmd('FileType', {
 ```
 
 All letters are lowercase. To use `<leader>x<Space>` for Run, replace the `<leader>xe` entry with the commented entry above. `<Plug>` mappings resolve when the plugin loads.
+
+### Optional navigation settings
+
+No setup call is needed for the defaults: navigation visits unfinished **leaf tasks**, and it leaves your clipboard alone. A leaf task has no checkbox descendants; plain list children and code do not make it a parent.
+
+To opt into copying the destination task's code after a successful Next or Prev, configure this once:
+
+<!-- example:navigation -->
+```lua
+require('markdo').setup({
+  navigation = {
+    leaf_only = true,
+    copy_on_jump = true,
+  },
+})
+```
+
+With Lazy.nvim, you can instead add `opts = { navigation = { copy_on_jump = true } }` to the installation spec. To include parent tasks in navigation, set `leaf_only = false`. Each setup call starts from the defaults and applies the supplied settings; `require('markdo').setup()` restores the defaults. These options affect Next and Prev; Done and Toggle stay stationary.
+
+**Upgrading from 1.x:** Next and Prev now skip parent tasks by default. Set `navigation.leaf_only = false` to restore their previous destinations. In the suggested keymaps, `xj` now means Next, and `xk` means Prev; update your own configuration if you copied the old `xj = DoneNext` example. Mark Do does not rewrite local mappings. DoneNext remains available as a compatibility command below.
 
 ## Quick start
 
@@ -126,8 +147,8 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
   - [ ] Review the output
 ````
 
-1. **Copy.** Place the cursor on **Run the greeting** (line 4), or inside its fence. Use `:MarkDoCopy` to copy the three script lines to the clipboard.
-2. **Complete and move.** Use `:MarkDoDoneNext` to check that child and move to **Review the output** (line 10). Use `:MarkDoDone` to finish the second child. The parent checks automatically:
+1. **Navigate and copy.** From the heading (line 1), use `:MarkDoNext` (optional `<leader>xj`) to reach **Run the greeting** (line 4), skipping the parent category. `<leader>xk` goes back to the previous unfinished leaf. Use `:MarkDoCopy` to copy the three script lines, or opt into copy-on-navigation above.
+2. **Complete, then move.** Use `:MarkDoDone` (optional `<leader>xd`) to check that child and stay there. Use `:MarkDoNext` to move to **Review the output** (line 10), then `:MarkDoDone` to finish it. The parent checks automatically:
 
 <!-- example:completed -->
 ```markdown
@@ -149,18 +170,17 @@ Open [examples/runbook.md](examples/runbook.md), or save the following as `morni
 | --- | --- | --- |
 | `:MarkDoToggle` | `<leader>xx` | Reverse the current task |
 | `:MarkDoDone` | `<leader>xd` | Check the current task; checked tasks stay checked |
-| `:MarkDoDoneNext` | `<leader>xj` | Check the current task and move to the next unfinished task |
 | `:MarkDoReset [scope]` | `<leader>xr` | Reopen the current task subtree, section, or buffer |
 | `:MarkDoFocusToggle` | `<leader>xf` | Fold completed branches in the current window |
 | `:MarkDoCopy` | `<leader>xc` | Copy the selected fence body to the `+` register |
 | `:MarkDoRun` | `<leader>xe` | Run the selected shell fence in a float |
 | `:MarkDoCapture` | `<leader>xo` | Insert the latest run’s output and exit status beneath its source fence |
-| `:MarkDoNext` | `<leader>xn` | Jump to the next unfinished task |
-| `:MarkDoPrev` | `<leader>xp` | Jump to the previous unfinished task |
+| `:MarkDoNext` | `<leader>xj` / `<leader>xn` | Jump to the next unfinished leaf task |
+| `:MarkDoPrev` | `<leader>xk` / `<leader>xp` | Jump to the previous unfinished leaf task |
 | `:MarkDoProgress` | `<leader>xs` | Show completion for the current buffer |
 | `:MarkDoProgressToggle` | `<leader>xv` | Toggle inline progress beside parent tasks |
 
-Example keys come from the [optional keymaps](#optional-keymaps) above. The plugin assigns none by default. Commands and mappings are buffer-local to Markdown, including buffers open before the plugin loads.
+Example keys come from the [optional keymaps](#optional-keymaps) above. The plugin assigns none by default. Commands and mappings are buffer-local to Markdown, including buffers open before the plugin loads. The combined `:MarkDoDoneNext` command is retained for [compatibility](#compatibility-donenext), with no suggested key.
 
 <details>
 <summary>&lt;Plug&gt; mapping reference</summary>
@@ -193,12 +213,6 @@ The innermost checkbox item containing the cursor is the current task. Its scope
 After a checkbox changes, Mark Do recomputes its checkbox ancestors from the bottom up. A parent checks when **all descendant tasks are checked**, and reopens when any are open. Plain list items can contain tasks but have no checkbox state.
 
 Editing a parent with Done or Toggle leaves its descendants alone; the next changed descendant recomputes the parent. Manual text edits do not trigger updates. Each command changes only checkbox characters, preserves the cursor, and forms **one undo step**, including parent changes.
-
-### Complete and continue
-
-`:MarkDoDoneNext` checks the current task using the same scope and ancestor rules as Done, then moves to the next unfinished task after the cursor's line. It reads the updated buffer, skips checked tasks and code, opens destination folds, and does not wrap. Checkbox changes, including parent updates, remain one undo step.
-
-If the current task is already checked, it advances without changing any checkboxes or adding an undo step. If there is no following unfinished task, it keeps the completion, preserves the cursor, and reports a short message. Outside a task, it reports **No task at cursor** and leaves both text and cursor alone. The ordinary Done command continues to preserve the cursor.
 
 ### Resetting a checklist
 
@@ -264,9 +278,13 @@ The helper returns an empty string for buffers without a checklist. Mark Do does
 
 ### Navigating unfinished tasks
 
-`:MarkDoNext` and `:MarkDoPrev` move to the checkbox of the next or previous unchecked task in the current buffer. They follow document order across headings, include unfinished parent and child tasks, and skip checked tasks and checkbox text inside fences. Closed folds at the destination open automatically.
+Next and Prev visit unfinished **leaf checkbox tasks** in document order, across headings. A task with any checkbox descendants is a parent, even if those descendants are checked. A task containing only plain list items or code is still a leaf. Checkbox-like code is ignored. Set `navigation.leaf_only = false` to include parent tasks.
 
-Navigation searches strictly after or before the **cursor's line**, so repeating a command moves on from the task under the cursor. From continuation text or code, Prev can return to that task's checkbox. At either end, a short message appears and the cursor stays put; navigation does not wrap. Both commands read unsaved edits and leave the checklist unchanged.
+Navigation searches strictly after or before the **cursor's line**, so repeating a command moves on from the task under the cursor. From continuation text or code, Prev can return to that leaf's checkbox. At either end, a short message appears and the cursor stays put; navigation does not wrap. Both commands read unsaved edits, open destination folds, and leave the checklist and undo history unchanged.
+
+With **`navigation.copy_on_jump = true`**, a successful Next or Prev copies the destination task's sole complete, nonempty fence to `+` as characterwise text, without an added final newline. Any language is supported, using the same body extraction as Copy. Only fences whose nearest checkbox ancestor is that destination qualify. With no fence, multiple fences, or an empty/incomplete fence, the clipboard stays as it is; navigation never opens a picker or borrows another task's fence. A failed jump does not copy. Missing or failing clipboard providers report a short message after the jump, without changing other registers or cancelling movement.
+
+Copy-on-navigation is **off by default**. Done and Toggle never move or copy. Explicit Copy remains available when you want to choose among several fences. Navigation never executes a script.
 
 ### Focus mode
 
@@ -339,6 +357,12 @@ Capture is explicit and works after you close the terminal. It reads the combine
 The inserted block preserves Markdown list and blockquote nesting. Its delimiter grows if the output contains backticks. Capture keeps all checkboxes as they are, preserves your cursor’s position in the text, and makes one undo step. Repeating Capture does nothing while that capture remains; undoing or deleting it allows capturing again. A new run starts a new result and leaves earlier captures intact. To rerun directly, put the cursor inside the shell fence; from a task containing several fences, the usual picker applies.
 
 Only the latest run per loaded source buffer is retained, until the next run or buffer unload. Capture tracks the source fence through unrelated edits. If the fence changes, disappears, or no longer parses in that location, it asks you to run it again. An active run, unmodifiable buffer, or unavailable parser reports a short message. Output over **1 MiB** is refused, without inserting a partial result. The buffer is never saved automatically.
+
+### Compatibility: DoneNext
+
+The recommended workflow keeps completion and navigation separate. For existing configurations, `:MarkDoDoneNext` keeps its original combined behavior: it checks the current task, including ancestor roll-up, then moves to the next unfinished task. It includes parent tasks, opens destination folds, does not wrap, and never automatically copies. The navigation settings above apply only to Next and Prev.
+
+Checkbox changes remain one undo step. An already checked task advances without changing text or undo history. With no next task, completion remains and the cursor stays put. Outside a task, it reports **No task at cursor** and leaves text and cursor alone. Its command and `<Plug>` mapping remain available; it has no suggested key and is omitted from the demo.
 
 ## Help and development
 
