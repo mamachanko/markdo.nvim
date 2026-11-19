@@ -316,6 +316,35 @@ Backtick and tilde fences are supported, with any language label or none. Mark D
 
 Copy writes characterwise text to `+` without adding a final newline; existing blank final body lines remain. A missing clipboard provider reports a message and leaves other registers alone.
 
+<details>
+<summary>Fences inside collapsible sections</summary>
+
+You can copy from a task whose fence is inside `<details>`. Indent the wrapper and its contents to belong to that task, and keep a blank line after `</summary>` and before `</details>` so the contents are Markdown. Use a longer outer fence when the Markdown body includes code fences of its own:
+
+<!-- example:details -->
+`````markdown
+- [ ] Release notes
+  - [ ] Create PR
+
+    <details>
+    <summary>Release notes prompt</summary>
+
+    ````markdown
+    # Mission
+
+    Write the release notes.
+    ```sh
+    printf 'example'
+    ```
+    ````
+
+    </details>
+`````
+
+Put the cursor on **Create PR**, anywhere inside the outer fence, or on its delimiters, then use `:MarkDoCopy`. The copied body includes the inner triple-backtick example. The parent **Release notes** does not borrow its child's fence. Run uses the same selection rules, with shell-labelled fences.
+
+</details>
+
 ### Running shell fences
 
 The first word of the fence's info string selects the interpreter:

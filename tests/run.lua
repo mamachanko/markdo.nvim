@@ -69,6 +69,7 @@ local copied
 vim.g.clipboard = { name = 'test', copy = { ['+'] = function(ls, rt) copied = { ls, rt } end, ['*'] = function() end },
   paste = { ['+'] = function() return { { '' }, 'v' } end, ['*'] = function() return { { '' }, 'v' } end }, cache_enabled = 0 }
 vim.fn.setreg('a', 'untouched')
+dofile('tests/details.lua')(eq, buffer, notices, function() return vim.deepcopy(copied) end)
 buffer({ '- [ ] task', '  ~~~bash extra', '  var="hello"', '', '    echo "$var" # comment', '  ~~~' }, 6)
 md.copy(); eq(copied, { { 'var="hello"', '', '  echo "$var" # comment' }, 'v' }); eq(vim.fn.getreg('a'), 'untouched')
 buffer({ '```', 'raw', '```' }, 1); md.copy(); eq(copied, { { 'raw' }, 'v' })
