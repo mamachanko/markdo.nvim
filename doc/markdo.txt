@@ -276,6 +276,26 @@ an error; no alternative fence is chosen. Both backtick and tilde fences work.
 Delimiters, info strings, container prefixes and Markdown fence indentation are
 removed. Relative indentation, comments, quotes and blank body lines remain.
 
+COLLAPSIBLE CONTENT                                            *markdo-details*
+
+Fences inside list-contained <details> wrappers belong to the same checkbox
+ancestor as ordinary fences. Copy from the task's checkbox or from anywhere
+inside the fence, including its delimiters. The parent task does not borrow a
+child's fence. Run and optional copy-on-navigation use the same ownership.
+
+Indent the wrapper and contents to the task's continuation column. Leave a
+blank line after the single-line <summary>...</summary> and before </details>.
+Use four or more backticks around Markdown containing triple-backtick examples;
+the inner delimiters, literal HTML, comments and blank lines are copied as code.
+See the README's collapsible example.
+
+The bundled block parser can lose task structure around HTML wrappers in lists.
+Mark Do can recover by reparsing a same-width view of standalone wrapper tags,
+only when this removes parse errors without changing native fence delimiters
+or losing existing checkbox markers. The actual buffer and copied body remain
+unchanged. HTML without the required Markdown blank separation, and backticks
+inside indented code, are not promoted to fenced blocks.
+
 TERMINAL                                                       *markdo-terminal*
 
 On macOS and Linux, sh/bash/zsh/fish use the named executable with one -c script

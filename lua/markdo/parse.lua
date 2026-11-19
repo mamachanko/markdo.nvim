@@ -6,6 +6,111 @@ local function contains(node, row)
   local sr, _, er, ec = node:range()
   return row >= sr and (row < er or (row == er and ec > 0))
 end
+local function fence_ranges(root)
+  local fences, code, markers, items = {}, {}, {}, {}
+  local function visit(node)
+    local kind = node:type()
+    if kind:match('^task_list_marker_') then markers[#markers + 1] = { node:range() } end
+    if kind == 'list_item' then
+      for child in node:iter_children() do
+        if child:type():match('^list_marker_') then
+          local row, _, _, col = child:range()
+          items[#items + 1] = { node = node, row = row, col = col }; break
+        end
+      end
+    end
+    if kind == 'fenced_code_block' or kind == 'indented_code_block' then
+      local first, _, last, col = node:range()
+      last = last - (col == 0 and 1 or 0)
+      if kind == 'fenced_code_block' then
+        local delimiters = {}
+        children(node, function(child)
+          if child:type() == 'fenced_code_block_delimiter' then delimiters[#delimiters + 1] = { child:range() } end
+        end)
+        fences[#fences + 1] = delimiters
+        -- Container prefixes can extend the node into the following tag line.
+        if delimiters[2] then last = delimiters[2][1] end
+      end
+      for row = first, last do code[row] = true end
+      return
+    end
+    for child in node:iter_children() do visit(child) end
+  end
+  visit(root)
+  return fences, code, markers, items
+end
+local function columns(prefix)
+  local width = 0
+  for char in prefix:gmatch('.') do width = width + (char == '\t' and 4 - width % 4 or 1) end
+  return width
+end
+local function summary(tag)
+  return (tag:match('^<summary>') or tag:match('^<summary%s')) and tag:match('</summary>%s*$')
+end
+local function recover_details(lines, tree)
+  -- The bundled block grammar can put list markers inside ERROR nodes, or
+  -- detach an entire child item, around HTML details/summary wrappers. Reparse
+  -- a fixed-width view of standalone wrappers as ordinary continuation text.
+  -- Keep code opaque and accept recovery only if it removes all parse errors
+  -- without changing fence delimiters or losing existing checkbox markers.
+  local root = tree:root()
+  if not root:has_error() then return end
+  local original_fences, code, original_markers, items = fence_ranges(root)
+  local normalized, changed, wrappers = {}, false, {}
+  local function blank(row) return not lines[row] or lines[row]:match('^[ \t>]*$') end
+  local function prelude(row)
+    -- HTML blocks end at a blank line. Do not promote text that is still HTML
+    -- into Markdown tasks/fences by removing its opening tags.
+    if blank(row + 1) then return true end
+    local next_tag = lines[row + 1]:match('^[ \t>]*(<.*)$')
+    return next_tag and summary(next_tag:lower()) and blank(row + 2)
+  end
+  for i, line in ipairs(lines) do
+    local prefix, tag = line:match('^([ \t>]*)(<.*)$')
+    local wrapper = false
+    if tag and not code[i - 1] then
+      local lower = tag:lower()
+      local width, quotes = columns(prefix), prefix:gsub('[ \t]', '')
+      if lower:match('^<details>%s*$') or lower:match('^<details%s+[^<>]*>%s*$') then
+        -- Only list-contained wrappers need this workaround. In particular,
+        -- do not turn dedented HTML into lazy continuation of a previous task.
+        if prelude(i) then
+          for _, item in ipairs(items) do
+            if contains(item.node, i - 1) and width >= columns(lines[item.row + 1]:sub(1, item.col)) then
+              wrapper = true; break
+            end
+          end
+          local parent = wrappers[#wrappers]
+          wrapper = wrapper or (parent and quotes == parent.quotes and width >= parent.width)
+        end
+        if wrapper then wrappers[#wrappers + 1] = { width = width, quotes = quotes } end
+      elseif lower:match('^</details>%s*$') then
+        local parent = wrappers[#wrappers]
+        if parent and quotes == parent.quotes and width == parent.width then
+          wrapper = blank(i + 1); table.remove(wrappers)
+        end
+      elseif summary(lower) and blank(i + 1) then
+        local parent = wrappers[#wrappers]
+        wrapper = parent and quotes == parent.quotes and width >= parent.width
+      end
+    end
+    normalized[i] = wrapper and (prefix .. string.rep('x', #line - #prefix)) or line
+    changed = changed or wrapper
+  end
+  if not changed then return end
+  local ok, parser, trees = pcall(function()
+    local parser = vim.treesitter.get_string_parser(table.concat(normalized, '\n') .. '\n', 'markdown')
+    return parser, parser:parse()
+  end)
+  if ok and trees and trees[1] and not trees[1]:root():has_error() then
+    local fences, _, markers = fence_ranges(trees[1]:root())
+    if not vim.deep_equal(original_fences, fences) then return end
+    local found = {}
+    for _, marker in ipairs(markers) do found[table.concat(marker, ':')] = true end
+    for _, marker in ipairs(original_markers) do if not found[table.concat(marker, ':')] then return end end
+    return parser, trees
+  end
+end
 function M.read(buf)
   local ok, parser = pcall(vim.treesitter.get_parser, buf, 'markdown')
   if not ok then
@@ -13,8 +118,11 @@ function M.read(buf)
   end
   local success, trees = pcall(parser.parse, parser)
   if not success or not trees[1] then return nil, 'Could not parse Markdown' end
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local recovered_parser, recovered_trees = recover_details(lines, trees[1])
+  if recovered_parser then parser, trees = recovered_parser, recovered_trees end
   local data = {
-    buf = buf, lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false),
+    buf = buf, lines = lines, _parser = parser,
     tasks = {}, fences = {}, headings = {}, heading_ranges = {}, sections = {}, item_tails = {},
   }
   local function visit(node, owner)

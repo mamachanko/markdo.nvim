@@ -121,6 +121,12 @@ local capture_example = example('captured', 'markdown', '````')
 assert(content():find(capture_example, 1, true))
 assert(require('markdo').progress().percent == 0)
 vim.cmd.undo(); assert(content() == runbook)
+-- The actual collapsible README example copies from the child task line.
+local details = example('details', 'markdown', '`````')
+vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
+api.nvim_buf_set_lines(0, 0, -1, false, vim.split(details, '\n', { plain = true }))
+at(2); key('c')
+assert(vim.deep_equal(copied, { { '# Mission', '', 'Write the release notes.', '```sh', "printf 'example'", '```' }, 'v' }))
 vim.cmd.enew({ bang = true }); vim.bo.filetype = 'markdown'
 assert(_G.markdo_progress() == '')
 vim.bo.filetype = 'text'; assert(_G.markdo_progress() == '')
