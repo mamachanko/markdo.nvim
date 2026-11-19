@@ -90,8 +90,8 @@ preserve the cursor and form one undo step per command, including roll-up.
 
 COMPLETE AND CONTINUE                                          *markdo-done-next*
 
-MarkDoDoneNext combines Done and Next. It uses the innermost task containing
-the cursor, checks that task, and recomputes its ancestors bottom up. All
+MarkDoDoneNext retains the original combined completion/navigation action.
+It checks the innermost task and recomputes its ancestors bottom up. All
 checkbox changes form one undo step. A directly checked parent still leaves
 its descendants alone; an unfinished child below the cursor can be the next
 destination.
