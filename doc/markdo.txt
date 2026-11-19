@@ -34,7 +34,7 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 :MarkDoDone                                                     *:MarkDoDone*
     Check the innermost task containing the cursor. Already checked: no action.
 :MarkDoDoneNext                                                 *:MarkDoDoneNext*
-    Check the current task, including ancestor roll-up, then move to the next
+    Compatibility action: check the current task, then move to the next
     unfinished task after the cursor's line. See |markdo-done-next|.
 :MarkDoReset [scope]                                            *:MarkDoReset*
     Reopen tasks in task (default), section, or buffer scope. See |markdo-reset|.
@@ -52,9 +52,9 @@ including buffers loaded before the plugin. All use unsaved buffer contents.
 :MarkDoCapture                                                  *:MarkDoCapture*
     Insert the latest run’s output below its source fence. See |markdo-capture|.
 :MarkDoNext                                                     *:MarkDoNext*
-    Jump to the next unchecked task after the cursor's line.
+    Jump to the next unchecked leaf task after the cursor's line.
 :MarkDoPrev                                                     *:MarkDoPrev*
-    Jump to the previous unchecked task before the cursor's line.
+    Jump to the previous unchecked leaf task before the cursor's line.
 :MarkDoProgress                                                 *:MarkDoProgress*
     Show completion for the current buffer, e.g. 6/8 tasks complete (75%).
 :MarkDoProgressToggle                                           *:MarkDoProgressToggle*
@@ -106,7 +106,8 @@ with a short message. Outside a task (including a sibling separator), report
 "No task at cursor" and do not change text or position. Missing parsers report
 the normal dependency error. The ordinary Done command remains stationary.
 
-See README.md for optional <leader>xj. No default key is assigned.
+Retained for compatibility without a suggested key. Includes parent tasks and
+never copies automatically; navigation options affect Next/Prev only.
 
 RESET                                                          *markdo-reset*
 
@@ -181,15 +182,51 @@ require('markdo').progress([bufnr])                              *markdo.progres
 NAVIGATION                                                     *markdo-navigation*
 
 Next and Prev follow document order through the entire current buffer, across
-headings and including unfinished parent and child tasks. Checked tasks and
-checkbox text inside fences are skipped. The cursor lands on the opening [ of
-the destination checkbox; any closed fold at that location opens.
+headings, stopping at unfinished leaf tasks. A leaf has no checkbox descendants;
+plain list children and fences alone do not make a checkbox a parent. Parents
+are skipped even if all their children are checked. Checked tasks and checkbox
+text inside fences are skipped. The cursor lands on the opening [ of the
+destination checkbox; any closed fold at that location opens.
 
 Both commands search strictly after or before the cursor's line, skipping a
 task on that same line regardless of column. From continuation text or code,
-Prev can return to the containing task's checkbox. At a boundary or with no
+Prev can return to the containing leaf's checkbox. At a boundary or with no
 match, a short message appears and the cursor stays put. Navigation does not
-wrap, reads unsaved edits, and never changes buffer contents or checkbox state.
+wrap, reads unsaved edits, and never changes buffer contents or undo history.
+
+Optional navigation.copy_on_jump copies the destination's sole complete,
+nonempty fence to + as characterwise text, without an added final newline.
+Any language is supported; prefixes/indentation are removed as for Copy.
+Consider only fences whose nearest checkbox ancestor is the destination.
+Zero or multiple fences, empty/incomplete bodies and failed jumps leave the
+clipboard alone. Never open a picker or borrow a parent's or sibling's fence.
+Provider errors report a short message after moving; movement still succeeds.
+Other registers are left alone. No script is executed.
+
+Copy-on-navigation is off by default. Done and Toggle stay stationary and never
+copy; DoneNext retains its original combined behavior, without automatic copy.
+See README.md for optional <leader>xj/<leader>xk and aliases xn/xp.
+
+CONFIGURATION                                                  *markdo.setup()*
+
+No setup call is required. To change navigation preferences: >lua
+    require('markdo').setup({
+      navigation = {
+        leaf_only = true,       -- default; false includes parent tasks
+        copy_on_jump = false,   -- default; true opts into clipboard writes
+      },
+    })
+<
+Settings affect Next and Prev only, across Markdown buffers. Each setup call
+starts from the defaults; omitted settings use those defaults. setup() or
+setup({}) resets both preferences. Non-table options, unknown keys and
+non-boolean values are errors; invalid calls leave prior settings unchanged.
+No keys are assigned, and setup never navigates, copies or executes anything.
+
+Migration from 1.x: Next/Prev now skip parents by default. Set leaf_only=false
+inside navigation to restore their old destinations. The README example's xj
+now means Next (formerly DoneNext); xk means Prev. Existing local mappings are
+not rewritten. The DoneNext command and Plug mapping remain compatible.
 
 FOCUS MODE                                                     *markdo-focus*
 

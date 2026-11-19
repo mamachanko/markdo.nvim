@@ -141,6 +141,8 @@ md.done(); assert(notices[#notices]:find('TSInstall markdown'))
 vim.treesitter.get_parser = get_parser
 local isolated = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l', 'tests/no_clipboard.lua' })
 assert(vim.v.shell_error == 0, isolated)
+local navigation_copy = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l', 'tests/navigation_copy.lua' })
+assert(vim.v.shell_error == 0, navigation_copy)
 local health_output = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l', 'tests/health_command.lua' })
 assert(vim.v.shell_error == 0, health_output)
 local demo_output = vim.fn.system({ vim.v.progpath, '--headless', '-u', 'NONE', '-l', 'tests/demo.lua' })

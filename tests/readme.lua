@@ -32,7 +32,7 @@ assert(vim.fn.maparg('<leader>xd', 'n') == '')
 api.nvim_buf_set_lines(0, 0, -1, false, vim.split(runbook, '\n', { plain = true }))
 vim.bo.filetype = 'markdown'
 assert(vim.fn.exists(':MarkDoDone') == 2)
-for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'DoneNext', xr = 'Reset', xf = 'FocusToggle', xc = 'Copy', xe = 'Run', xo = 'Capture', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
+for key, action in pairs({ xx = 'Toggle', xd = 'Done', xj = 'Next', xk = 'Prev', xr = 'Reset', xf = 'FocusToggle', xc = 'Copy', xe = 'Run', xo = 'Capture', xn = 'Next', xp = 'Prev', xs = 'Progress', xv = 'ProgressToggle' }) do
   local mapping = vim.fn.maparg('<leader>' .. key, 'n', false, true)
   assert(mapping.buffer == 1 and mapping.rhs == '<Plug>(MarkDo' .. action .. ')')
 end
@@ -45,16 +45,20 @@ local function key(suffix) api.nvim_feedkeys('\\x' .. suffix, 'xt', false) end
 local function content() return table.concat(api.nvim_buf_get_lines(0, 0, -1, false), '\n') end
 assert(loadstring(example('statusline', 'lua')))()
 assert(_G.markdo_progress() == '0/2 (0%)')
--- Copy first, then work through tasks with the documented optional keys.
-at(4); key('c')
+-- Navigate and mark separately, using the recommended keys and both aliases.
+at(1); key('j'); assert(api.nvim_win_get_cursor(0)[1] == 4)
+assert(copied == nil) -- No setup, no automatic clipboard writes.
+key('j'); assert(api.nvim_win_get_cursor(0)[1] == 10)
+key('k'); assert(api.nvim_win_get_cursor(0)[1] == 4)
+key('n'); assert(api.nvim_win_get_cursor(0)[1] == 10)
+key('p'); assert(api.nvim_win_get_cursor(0)[1] == 4)
+key('c')
 assert(vim.deep_equal(copied, { { 'name=Neovim', [[printf 'Hello, %s!\n' "$name"]], 'sleep 1' }, 'v' }))
-key('j')
-assert(api.nvim_win_get_cursor(0)[1] == 10)
+key('d'); assert(api.nvim_win_get_cursor(0)[1] == 4)
 assert(api.nvim_buf_get_lines(0, 3, 4, false)[1] == '  - [x] Run the greeting')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [ ] Ready for the day')
 assert(_G.markdo_progress() == '1/2 (50%)')
-key('p'); assert(api.nvim_win_get_cursor(0)[1] == 3)
-key('n'); assert(api.nvim_win_get_cursor(0)[1] == 10)
+key('j'); assert(api.nvim_win_get_cursor(0)[1] == 10)
 key('d')
 assert(api.nvim_get_current_line() == '  - [x] Review the output')
 assert(api.nvim_buf_get_lines(0, 2, 3, false)[1] == '- [x] Ready for the day')
@@ -94,6 +98,12 @@ vim.cmd.undo(); assert(require('markdo').progress().percent == 100)
 key('1'); assert(content() == runbook)
 vim.cmd.undo(); key('2'); assert(content() == runbook)
 key('v'); assert(inline_text() == nil)
+-- Execute the actual opt-in configuration snippet, then restore defaults.
+assert(loadstring(example('navigation', 'lua')))()
+copied = nil; at(1); key('j')
+assert(api.nvim_win_get_cursor(0)[1] == 4)
+assert(vim.deep_equal(copied, { { 'name=Neovim', [[printf 'Hello, %s!\n' "$name"]], 'sleep 1' }, 'v' }))
+require('markdo').setup()
 -- End with execution and capture. Neither changes checklist states.
 at(4)
 local source = api.nvim_get_current_buf()

@@ -1,6 +1,6 @@
 # README demo
 
-[demo.gif](demo.gif) is a roughly **33-second recording of real Neovim 0.11.0**
+[demo.gif](demo.gif) is a roughly **37-second recording of real Neovim 0.11.0**
 at **56 columns × 24 rows**. It uses [examples/demo.md](../examples/demo.md), a
 small interactive runbook with a separate Archive section to make reset scopes
 visible. The README quick start uses the simpler [runbook.md](../examples/runbook.md).
@@ -10,8 +10,8 @@ visible. The README quick start uses the simpler [runbook.md](../examples/runboo
 | Chapter | What the recording shows |
 | --- | --- |
 | Health | `:checkhealth markdo`: Neovim, parser, clipboard, and shell diagnostics |
-| Navigation | Next and Prev between unfinished tasks |
-| Completion | Done and Next, Done, Toggle, automatic parent completion and reopening |
+| Navigation | `xj` / `xk` visit unfinished leaves, skip the parent category, and optionally copy the destination’s code |
+| Completion | Done stays on the task; Next moves separately; Toggle, parent completion and reopening |
 | Progress | Whole-buffer summary, optional statusline, and inline parent counts |
 | Focus | Fold completed branches, keep headings visible, then restore the previous view |
 | Reset | Task subtree, section, and buffer scopes; undo; Archive preserved until buffer reset |
@@ -21,7 +21,11 @@ visible. The README quick start uses the simpler [runbook.md](../examples/runboo
 The Archive task starts checked. Whole-buffer progress counts three leaf tasks;
 the Morning checks parent counts its own two children. The optional README
 statusline integration is configured up front; inline annotations are enabled
-explicitly with `:MarkDoProgressToggle`. Both remain optional plugin features.
+explicitly with `:MarkDoProgressToggle`. The recording also loads the README's
+**opt-in copy-on-navigation** example: after the first `Space x j`, `Space x i`
+shows the automatically copied script. Navigation with no fence leaves that
+clipboard untouched. Runtime defaults leave the clipboard alone; no setup
+call is needed unless you want to change those defaults.
 
 The last chapter runs ordinary `sh` code that prompts for a name. Typing
 `Neovim` produces `Hello, Neovim!`. The checklist stays open after the run.
@@ -41,8 +45,8 @@ you can choose any leader or bindings. In the clip:
 
 | Keys | Action |
 | --- | --- |
-| `Space x n` / `Space x p` | Next / Prev |
-| `Space x j` / `Space x d` / `Space x x` | DoneNext / Done / Toggle |
+| `Space x j` / `Space x k` | Next / Prev unfinished leaf |
+| `Space x d` / `Space x x` | Done / Toggle, without moving |
 | `Space x v` / `Space x s` | Inline / summary progress |
 | `Space x f` | Focus on/off |
 | `Space x r` / `Space x 1` / `Space x 2` | Reset task / section / buffer |
@@ -50,6 +54,11 @@ you can choose any leader or bindings. In the clip:
 | `Space x c` | Copy |
 | `Space x e` / `Space x o` | Run / Capture |
 | `Ctrl-\`, `Ctrl-N`, then `q` | Leave terminal mode, close after exit |
+
+The README also suggests `Space x n` / `Space x p` as aliases. The compatibility
+DoneNext command is deliberately omitted: the recommended flow keeps navigation
+and completion separate. Its exclusion is explained in `M.exceptions` and its
+original behavior remains covered by headless tests.
 
 Two recording-only inspection shortcuts are defined in `scripts/demo.lua`:
 `Space x h` opens `:checkhealth markdo`, and `Space x i` displays the clipboard.
@@ -73,8 +82,8 @@ example on macOS). `--output /tmp/demo.gif` writes a preview elsewhere;
 `--stills /tmp/demo-frames` also saves each frame for visual review.
 
 This recording used xclip with an isolated Xvfb display. A desktop clipboard
-provider such as pbcopy or xclip works too. The recorder verifies the copied
-body and characterwise register type, then restores the prior clipboard at
+provider such as pbcopy or xclip works too. The recorder verifies automatically and explicitly copied
+bodies and characterwise register type, then restores the prior clipboard at
 shutdown. It requires a real provider; it does not silently substitute a fake
 one for recording.
 
@@ -91,7 +100,8 @@ Demo dependencies are optional and are not plugin runtime dependencies.
 ## Verify behavior without recording
 
 The recorder and headless tests share [scripts/demo.lua](../scripts/demo.lua).
-The scenario asserts cursor destinations, checkbox roll-up, percentages,
+The scenario asserts leaf destinations, stationary completion, opt-in clipboard
+writes, checkbox roll-up, percentages,
 subtree counts, reset boundaries, undo, clipboard bytes, terminal input/output,
 exit status, captured text/container ownership, and an unchanged file on disk.
 It also checks that every current Mark Do command is demonstrated or has an

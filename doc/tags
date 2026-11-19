@@ -26,4 +26,5 @@ markdo-tasks	markdo.txt	/*markdo-tasks*
 markdo-terminal	markdo.txt	/*markdo-terminal*
 markdo-testing	markdo.txt	/*markdo-testing*
 markdo.progress()	markdo.txt	/*markdo.progress()*
+markdo.setup()	markdo.txt	/*markdo.setup()*
 markdo.txt	markdo.txt	/*markdo.txt*
